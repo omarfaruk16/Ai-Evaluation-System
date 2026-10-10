@@ -21,12 +21,20 @@ export interface AuthenticatedClient {
 type RequestWithClient = Request & { client?: AuthenticatedClient };
 
 const CACHE_MS = 60_000;
+const SEEN_EVERY_MS = 60_000;
+const lastSeen = new Map<string, number>();
+
+// Shared by every guard instance in this process, so the console can drop it after a key change.
+const cache = new Map<string, { at: number; client: AuthenticatedClient | null }>();
+
+/** Forget cached key lookups (after a key is rotated or a client is disabled). */
+export function clearApiKeyCache(): void {
+  cache.clear();
+}
 
 /** Accepts `Authorization: Bearer <key>` or `X-Api-Key: <key>`. */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
-  private readonly cache = new Map<string, { at: number; client: AuthenticatedClient | null }>();
-
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -40,11 +48,22 @@ export class ApiKeyGuard implements CanActivate {
     const client = await this.lookup(hashApiKey(key));
     if (!client) throw new AppError('unauthorized', 'Invalid or disabled API key', HttpStatus.UNAUTHORIZED);
     req.client = client;
+    this.touch(client.id);
     return true;
   }
 
+  /** Records when the project last called the API (shown in the console), at most once a minute. */
+  private touch(clientId: string): void {
+    const now = Date.now();
+    if (now - (lastSeen.get(clientId) ?? 0) < SEEN_EVERY_MS) return;
+    lastSeen.set(clientId, now);
+    void this.prisma.client
+      .update({ where: { id: clientId }, data: { lastSeenAt: new Date(now) }, select: { id: true } })
+      .catch(() => undefined);
+  }
+
   private async lookup(hash: string): Promise<AuthenticatedClient | null> {
-    const hit = this.cache.get(hash);
+    const hit = cache.get(hash);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.client;
     const row = await this.prisma.client.findUnique({ where: { apiKeyHash: hash } });
     const client =
@@ -56,7 +75,7 @@ export class ApiKeyGuard implements CanActivate {
             monthlyBudgetUsd: row.monthlyBudgetUsd === null ? null : Number(row.monthlyBudgetUsd),
           }
         : null;
-    this.cache.set(hash, { at: Date.now(), client });
+    cache.set(hash, { at: Date.now(), client });
     return client;
   }
 }

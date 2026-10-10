@@ -5,7 +5,10 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --scale worker=2
 #
 # Postgres and Redis are never published. The API listens on 127.0.0.1:4200 only; the host's
-# nginx terminates TLS and proxies to it (see deploy/nginx.conf).
+# nginx terminates TLS and proxies to it (see deploy/nginx.conf). The API also serves the
+# operator console at /console; create the first console admin with
+#   docker compose -f docker-compose.prod.yml --env-file .env.production exec api \
+#     node dist/cli/create-admin.js --email you@example.com --name "Your Name" --generate
 name: ai-marking
 
 x-logging: &logging
@@ -34,6 +37,7 @@ x-app-env: &app-env
   DEFERRED_RATE_MAX: ${DEFERRED_RATE_MAX:-5}
   ROUTER_FIRST_N_REALTIME: ${ROUTER_FIRST_N_REALTIME:-20}
   ROUTER_SMALL_GROUP_MAX: ${ROUTER_SMALL_GROUP_MAX:-300}
+  PUBLIC_URL: ${PUBLIC_URL:-}
 
 services:
   postgres:
@@ -77,6 +81,9 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+    # Everything in .env.production reaches the app, so API keys for model profiles added in the
+    # console (e.g. DEEPSEEK_API_KEY) work without editing this file. `environment` still wins.
+    env_file: [{ path: .env.production, required: false }]
     environment:
       <<: *app-env
       RUN_EMBEDDED_WORKERS: 'false'
@@ -98,6 +105,7 @@ services:
     <<: *logging
     depends_on:
       api: { condition: service_healthy }
+    env_file: [{ path: .env.production, required: false }]
     environment:
       <<: *app-env
     command: ['node', 'dist/worker.js']

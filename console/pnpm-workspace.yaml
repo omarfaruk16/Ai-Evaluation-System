@@ -1,0 +1,5 @@
+# The console is its own pnpm project (own lockfile), so the API image never installs it.
+# pnpm 11 blocks dependency build scripts by default; esbuild (used by Vite) needs its own.
+allowBuilds:
+  esbuild: true
+  '@tailwindcss/oxide': true

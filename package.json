@@ -22,7 +22,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "client:create": "tsx src/cli/create-client.ts",
-    "client:rotate-key": "tsx src/cli/rotate-key.ts"
+    "client:rotate-key": "tsx src/cli/rotate-key.ts",
+    "admin:create": "tsx src/cli/create-admin.ts",
+    "console:install": "pnpm --dir console install",
+    "console:dev": "pnpm --dir console dev",
+    "console:build": "pnpm --dir console build"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.2",

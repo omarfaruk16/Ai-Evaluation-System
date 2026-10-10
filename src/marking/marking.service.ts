@@ -5,7 +5,7 @@ import { PrismaService } from '../common/prisma.service';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
 import { LlmClient, LlmError } from '../llm/llm.types';
-import { UsageService } from '../usage/usage.service';
+import { errorFields, resultFields, UsageService } from '../usage/usage.service';
 import { WebhookService } from '../webhooks/webhook.service';
 import { markingPrompt, PROMPT_VERSIONS } from './prompts';
 import { markingJsonSchema, markingOutputSchema, rubricSchema } from './schemas';
@@ -86,13 +86,8 @@ export class MarkingService {
             clientId: ev.clientId,
             evaluationId: ev.id,
             kind: 'marking',
-            model: e.extra.model ?? this.llm.model,
-            host: e.extra.host ?? null,
             promptVersion,
-            usage: e.extra.usage ?? { inputTokens: 0, outputTokens: 0, cachedTokens: 0, reasoningTokens: 0, costUsd: 0 },
-            latencyMs: e.extra.latencyMs ?? 0,
-            ok: false,
-            error: `${e.code}: ${e.message}`,
+            ...errorFields(e, this.llm.model),
           });
           throw new MarkingFailure(
             e.message,
@@ -108,11 +103,8 @@ export class MarkingService {
         clientId: ev.clientId,
         evaluationId: ev.id,
         kind: 'marking',
-        model: result.model,
-        host: result.host,
         promptVersion,
-        usage: result.usage,
-        latencyMs: result.latencyMs,
+        ...resultFields(result),
         ok: parsed.success,
         error: parsed.success ? undefined : 'output did not match the schema',
       });

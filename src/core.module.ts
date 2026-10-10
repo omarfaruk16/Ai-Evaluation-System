@@ -7,6 +7,7 @@ import { LlmModule } from './llm/llm.module';
 import { FeedbackService } from './marking/feedback.service';
 import { MarkingService } from './marking/marking.service';
 import { RubricDraftService } from './marking/rubric-draft.service';
+import { SettingsModule } from './settings/settings.service';
 import { QueueModule } from './queue/queue.module';
 import { UsageService } from './usage/usage.service';
 import { WebhookService } from './webhooks/webhook.service';
@@ -32,7 +33,8 @@ function prettyAvailable(): boolean {
       useFactory: (env: Env) => ({
         pinoHttp: {
           level: env.LOG_LEVEL,
-          redact: ['req.headers.authorization', 'req.headers["x-api-key"]'],
+          // Never log credentials: client API keys and the console's session cookie.
+          redact: ['req.headers.authorization', 'req.headers["x-api-key"]', 'req.headers.cookie', 'res.headers["set-cookie"]'],
           autoLogging: { ignore: (req) => req.url === '/health' },
           ...(env.NODE_ENV === 'development' && prettyAvailable()
             ? { transport: { target: 'pino-pretty', options: { singleLine: true } } }
@@ -41,6 +43,7 @@ function prettyAvailable(): boolean {
       }),
     }),
     PrismaModule,
+    SettingsModule,
     LlmModule,
     QueueModule,
   ],

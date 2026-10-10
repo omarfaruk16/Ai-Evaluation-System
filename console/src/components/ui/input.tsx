@@ -1,0 +1,77 @@
+import { ChevronDown } from 'lucide-react';
+import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
+
+const field =
+  'w-full rounded-md border border-input bg-surface px-3 text-sm text-foreground shadow-card placeholder:text-subtle transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger';
+
+export const Input = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & { prefix?: ReactNode; suffix?: ReactNode }>(
+  function Input({ className, prefix, suffix, ...rest }, ref) {
+    if (!prefix && !suffix) return <input ref={ref} className={cn(field, 'h-9', className)} {...rest} />;
+    return (
+      <div className={cn('relative flex items-center', className)}>
+        {prefix && <span className="text-muted pointer-events-none absolute left-3 text-sm">{prefix}</span>}
+        <input
+          ref={ref}
+          className={cn(field, 'h-9', prefix ? 'pl-8' : '', suffix ? 'pr-14' : '')}
+          {...rest}
+        />
+        {suffix && <span className="text-muted pointer-events-none absolute right-3 text-xs">{suffix}</span>}
+      </div>
+    );
+  },
+);
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
+  { className, ...rest },
+  ref,
+) {
+  return <textarea ref={ref} className={cn(field, 'min-h-[84px] py-2 leading-relaxed', className)} {...rest} />;
+});
+
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select(
+  { className, children, ...rest },
+  ref,
+) {
+  return (
+    <div className={cn('relative', className)}>
+      <select ref={ref} className={cn(field, 'h-9 appearance-none pr-8')} {...rest}>
+        {children}
+      </select>
+      <ChevronDown className="text-muted pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2" />
+    </div>
+  );
+});
+
+export function Label({ htmlFor, children, className }: { htmlFor?: string; children: ReactNode; className?: string }) {
+  return (
+    <label htmlFor={htmlFor} className={cn('text-[13px] font-medium text-foreground', className)}>
+      {children}
+    </label>
+  );
+}
+
+/** Label + control + help/error text. */
+export function Field({
+  label,
+  htmlFor,
+  hint,
+  error,
+  children,
+  className,
+}: {
+  label: ReactNode;
+  htmlFor?: string;
+  hint?: ReactNode;
+  error?: string | null;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('grid content-start gap-1.5', className)}>
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+      {error ? <p className="text-danger text-xs">{error}</p> : hint ? <p className="text-muted text-xs leading-relaxed">{hint}</p> : null}
+    </div>
+  );
+}

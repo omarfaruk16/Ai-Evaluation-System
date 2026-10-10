@@ -10,6 +10,8 @@ import type { Response } from 'express';
 
 export type ErrorCode =
   | 'unauthorized'
+  | 'forbidden'
+  | 'rate_limited'
   | 'validation_failed'
   | 'invalid_rubric'
   | 'not_found'
@@ -50,7 +52,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const code: ErrorCode =
         status === 401
           ? 'unauthorized'
-          : status === 404
+          : status === 403
+            ? 'forbidden'
+            : status === 404
             ? 'not_found'
             : status === 413
               ? 'payload_too_large'

@@ -165,3 +165,9 @@ ${finals}
 </final_marks>${input.teacherNote?.trim() ? `\n<teacher_note>\n${clean(input.teacherNote)}\n</teacher_note>` : ''}`;
   return { system: FEEDBACK_SYSTEM, user };
 }
+
+/** Approximate input tokens of a marking prompt before the question and answer (4 characters per token). */
+export function markingPromptBaseTokens(): number {
+  const empty = markingPrompt({ question: '', modelAnswer: '', maxMarks: 1, markStep: 0.5, rubric: { criteria: [] }, answer: '' });
+  return Math.ceil((empty.system.length + empty.user.length) / 4);
+}

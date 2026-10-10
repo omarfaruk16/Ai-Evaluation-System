@@ -1,9 +1,11 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import type { CallOrigin } from '@prisma/client';
 import { AppError } from '../common/errors';
+import { PrismaService } from '../common/prisma.service';
 import { roundToStep } from '../common/text';
 import type { AuthenticatedClient } from '../auth/api-key.guard';
 import { LlmClient, LlmError, emptyUsage, type LlmUsage } from '../llm/llm.types';
-import { UsageService } from '../usage/usage.service';
+import { errorFields, resultFields, UsageService } from '../usage/usage.service';
 import { PROMPT_VERSIONS, rubricDraftPrompt } from './prompts';
 import { rubricHash, validateRubricDraft, type Issue } from './rubric';
 import { rubricDraftJsonSchema, rubricDraftOutputSchema, type Rubric, type RubricDraftOutput } from './schemas';
@@ -18,11 +20,18 @@ export interface RubricDraftInput {
 
 const ATTEMPTS = 2;
 
+export interface DraftOptions {
+  /** Use this model profile instead of the one assigned to rubric drafts. */
+  profileId?: string;
+  origin?: CallOrigin;
+}
+
 @Injectable()
 export class RubricDraftService {
   constructor(
     @Inject(LlmClient) private readonly llm: LlmClient,
     @Inject(UsageService) private readonly usage: UsageService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -30,9 +39,21 @@ export class RubricDraftService {
    * don't trace to the model answer, is retried once with the problems listed; if it still
    * fails, the caller gets 422 with the issues and the last draft.
    */
-  async draft(client: AuthenticatedClient, input: RubricDraftInput) {
-    await this.usage.assertWithinBudget(client);
+  async draft(client: AuthenticatedClient | null, input: RubricDraftInput, opts: DraftOptions = {}) {
+    if (client) await this.usage.assertWithinBudget(client);
     const total: LlmUsage = emptyUsage();
+    const log = (ok: boolean, criteria: number, error?: string) =>
+      this.prisma.rubricDraft.create({
+        data: {
+          clientId: client?.id ?? null,
+          origin: opts.origin ?? 'client',
+          ok,
+          criteria,
+          costUsd: Number(total.costUsd.toFixed(6)),
+          error: error?.slice(0, 1000) ?? null,
+        },
+      });
+    const base = { clientId: client?.id ?? null, origin: opts.origin ?? ('client' as const), kind: 'rubric_draft' as const };
     let issues: Issue[] = [];
     let last: RubricDraftOutput | null = null;
     let model = this.llm.model;
@@ -43,6 +64,7 @@ export class RubricDraftService {
       try {
         result = await this.llm.complete({
           kind: 'rubric_draft',
+          profileId: opts.profileId,
           system: prompt.system,
           user: prompt.user,
           schemaName: 'rubric_draft',
@@ -58,17 +80,9 @@ export class RubricDraftService {
         });
       } catch (e) {
         if (e instanceof LlmError) {
-          await this.usage.record({
-            clientId: client.id,
-            kind: 'rubric_draft',
-            model: e.extra.model ?? this.llm.model,
-            host: e.extra.host ?? null,
-            promptVersion: PROMPT_VERSIONS.rubric_draft,
-            usage: e.extra.usage ?? emptyUsage(),
-            latencyMs: e.extra.latencyMs ?? 0,
-            ok: false,
-            error: `${e.code}: ${e.message}`,
-          });
+          await this.usage.record({ ...base, promptVersion: PROMPT_VERSIONS.rubric_draft, ...errorFields(e, this.llm.model) });
+          total.costUsd += e.extra.usage?.costUsd ?? 0;
+          await log(false, 0, `${e.code}: ${e.message}`);
           throw new AppError(
             'llm_unavailable',
             `The AI model is unavailable right now (${e.code}). Try again shortly.`,
@@ -82,13 +96,9 @@ export class RubricDraftService {
       for (const k of Object.keys(total) as (keyof LlmUsage)[]) total[k] += result.usage[k];
       const parsed = rubricDraftOutputSchema.safeParse(result.data);
       await this.usage.record({
-        clientId: client.id,
-        kind: 'rubric_draft',
-        model: result.model,
-        host: result.host,
+        ...base,
         promptVersion: PROMPT_VERSIONS.rubric_draft,
-        usage: result.usage,
-        latencyMs: result.latencyMs,
+        ...resultFields(result),
         ok: parsed.success,
         error: parsed.success ? undefined : 'output did not match the schema',
       });
@@ -102,9 +112,13 @@ export class RubricDraftService {
       };
       last = draft;
       issues = validateRubricDraft(draft, input.modelAnswer, input.maxMarks, input.markStep, input.maxCriteria);
-      if (issues.length === 0) return this.response(draft, model, total);
+      if (issues.length === 0) {
+        await log(true, draft.criteria.length);
+        return this.response(draft, model, total);
+      }
     }
 
+    await log(false, last?.criteria.length ?? 0, issues.map((i) => `${i.path}: ${i.message}`).join('; '));
     throw new AppError(
       'rubric_draft_invalid',
       'The AI could not produce a valid rubric for this question. Write it by hand or try again.',

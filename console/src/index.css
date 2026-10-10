@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Operator console design tokens. Neutral zinc surfaces, one indigo accent for actions and
+ * focus, and muted semantic colours reserved for status. Charts use the --chart-* series.
+ */
+:root {
+  --background: #f6f6f7;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --surface-3: #ececee;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --foreground: #18181b;
+  --muted: #71717a;
+  --subtle: #a1a1aa;
+
+  --primary: #4338ca;
+  --primary-hover: #3730a3;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eef0ff;
+
+  --success: #15803d;
+  --success-soft: #ecfdf3;
+  --warning: #b45309;
+  --warning-soft: #fff7e6;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #0369a1;
+  --info-soft: #eff8ff;
+
+  /* Categorical series, fixed order (validated: CVD ΔE ≥ 8.4, normal-vision ΔE ≥ 19.8). */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-grid: #ececee;
+  --chart-axis: #a1a1aa;
+
+  --ring: #6366f1;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.05);
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0b0b0e;
+  --surface: #131317;
+  --surface-2: #1a1a1f;
+  --surface-3: #23232a;
+  --border: #26262d;
+  --input: #34343c;
+  --foreground: #ececf1;
+  --muted: #9b9ba7;
+  --subtle: #6b6b76;
+
+  --primary: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-foreground: #0b0b0e;
+  --primary-soft: rgb(129 140 248 / 0.12);
+
+  --success: #4ade80;
+  --success-soft: rgb(74 222 128 / 0.1);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.1);
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 0.1);
+  --info: #38bdf8;
+  --info-soft: rgb(56 189 248 / 0.1);
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-grid: #23232a;
+  --chart-axis: #6b6b76;
+
+  --ring: #818cf8;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-ring: var(--ring);
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--primary-soft);
+  }
+  input[type='number']::-webkit-inner-spin-button {
+    opacity: 0.4;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Printing an invoice: only the invoice paper, no console chrome. */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+}
+.print-only {
+  display: none;
+}

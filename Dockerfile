@@ -1,4 +1,15 @@
-# One image for both processes: the API (`node dist/main.js`) and the worker (`node dist/worker.js`).
+# One image for both processes: the API (`node dist/main.js`, which also serves the operator
+# console at /console) and the worker (`node dist/worker.js`).
+
+# The console is a separate pnpm project with its own lockfile; only its built files ship.
+FROM node:24-bookworm-slim AS console
+RUN corepack enable
+WORKDIR /console
+COPY console/package.json console/pnpm-lock.yaml console/pnpm-workspace.yaml ./
+ENV npm_config_store_dir=/pnpm-store
+RUN --mount=type=cache,id=ams-pnpm-store,target=/pnpm-store pnpm install --frozen-lockfile
+COPY console/ ./
+RUN pnpm build
 
 FROM node:24-bookworm-slim AS build
 RUN corepack enable \
@@ -25,6 +36,7 @@ COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/prisma ./prisma
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=console --chown=node:node /console/dist ./console/dist
 USER node
 EXPOSE 4200
 ENTRYPOINT ["/usr/bin/tini", "--"]

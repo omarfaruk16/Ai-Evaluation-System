@@ -337,12 +337,13 @@ describe('marking pipeline', () => {
     expect(none.body.data).toEqual([]);
   });
 
-  it('reports usage and cost', async () => {
+  it('reports usage to the project without costs or tokens', async () => {
     const res = await request(http).get('/v1/usage').set(auth());
     expect(res.status).toBe(200);
-    expect(res.body.totalCostUsd).toBeGreaterThan(0);
-    const kinds = new Set(res.body.calls.map((c: { kind: string }) => c.kind));
-    expect([...kinds].sort()).toEqual(['feedback_rewrite', 'marking', 'rubric_draft']);
+    expect(res.body.answers.completed).toBeGreaterThan(0);
+    expect(res.body.rubricDrafts).toBeGreaterThan(0);
+    expect(res.body.usageLimit).toEqual({ set: false, reached: false });
+    expect(JSON.stringify(res.body)).not.toMatch(/cost|token|usd/i);
   });
 
   it('refuses work when the monthly budget is used up', async () => {
@@ -352,10 +353,51 @@ describe('marking pipeline', () => {
       .send({ question, answers: [{ externalId: 'b1', text: GOOD }] });
     expect(res.status).toBe(402);
     expect(res.body.error.code).toBe('budget_exceeded');
+    expect(res.body.error.message).not.toMatch(/\$/);
   });
 
   it('keeps one client from reading another client’s evaluations', async () => {
     const res = await request(http).get(`/v1/evaluations/${ids.a1}`).set({ Authorization: `Bearer ${brokeKey}` });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('project setup (how a client connects itself)', () => {
+  it('tells a key who it belongs to', async () => {
+    const res = await request(http).get('/v1/me').set(auth());
+    expect(res.status).toBe(200);
+    expect(res.body.project.name).toBe('e2e');
+    expect(res.body.service.api).toBe('v1');
+    expect(res.body.usageThisMonth.answersMarked).toBeGreaterThan(0);
+    expect(JSON.stringify(res.body)).not.toMatch(/cost|usd|apiKey|secret/i);
+    expect((await request(http).get('/v1/me')).status).toBe(401);
+  });
+
+  it('registers a webhook, issues a new signing secret and pings with it', async () => {
+    const url = (await request(http).get('/v1/me').set(auth())).body.webhook.url as string;
+    const res = await request(http).put('/v1/webhook').set(auth()).send({ url });
+    expect(res.status).toBe(200);
+    expect(res.body.url).toBe(url);
+    expect(res.body.secret).toMatch(/^whsec_/);
+    expect(res.body.secret).not.toBe(webhookSecret);
+    webhookSecret = res.body.secret;
+
+    hooks.length = 0;
+    const ping = await request(http).post('/v1/webhook/test').set(auth());
+    expect(ping.body).toMatchObject({ ok: true, status: 204, url });
+    expect(hooks).toHaveLength(1);
+    expect(hooks[0]).toMatchObject({ event: 'ping', signatureOk: true });
+  });
+
+  it('rejects a bad webhook URL and can remove the webhook', async () => {
+    expect((await request(http).put('/v1/webhook').set(auth()).send({ url: 'ftp://x' })).status).toBe(400);
+    expect((await request(http).delete('/v1/webhook').set(auth())).status).toBe(204);
+    expect((await request(http).get('/v1/me').set(auth())).body.webhook.url).toBeNull();
+    expect((await request(http).post('/v1/webhook/test').set(auth())).status).toBe(400);
+  });
+
+  it('records when the key was last used', async () => {
+    const row = await prisma.client.findFirstOrThrow({ where: { name: 'e2e' } });
+    expect(row.lastSeenAt).not.toBeNull();
   });
 });

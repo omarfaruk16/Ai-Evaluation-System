@@ -1,6 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Queue } from 'bullmq';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
@@ -11,6 +12,14 @@ import { signatureHeader } from './signature';
 export type WebhookEvent = 'evaluation.completed' | 'evaluation.failed';
 
 export class WebhookDeliveryError extends Error {}
+
+export interface PingResult {
+  ok: boolean;
+  status: number | null;
+  latencyMs: number;
+  /** First 500 characters of the response body, or the network error. */
+  body: string;
+}
 
 @Injectable()
 export class WebhookService {
@@ -111,6 +120,33 @@ export class WebhookService {
     if (!delivered) {
       if (isFinalAttempt) this.logger.warn(`Webhook ${deliveryId} to ${delivery.url} gave up: ${error}`);
       throw new WebhookDeliveryError(`Webhook delivery failed: ${error}`);
+    }
+  }
+
+  /** Sends a signed `ping` event to a URL right away (not queued) and reports what came back. */
+  async ping(url: string, secret: string): Promise<PingResult> {
+    const body = JSON.stringify({ id: randomUUID(), type: 'ping', createdAt: new Date().toISOString(), data: {} });
+    const started = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.env.WEBHOOK_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'ai-marking-service/1',
+          'X-AMS-Event': 'ping',
+          'X-AMS-Signature': signatureHeader(secret, body),
+        },
+        body,
+        signal: controller.signal,
+      });
+      return { ok: res.ok, status: res.status, latencyMs: Date.now() - started, body: (await res.text()).slice(0, 500) };
+    } catch (e) {
+      const aborted = (e as Error).name === 'AbortError';
+      return { ok: false, status: null, latencyMs: Date.now() - started, body: aborted ? 'Timed out' : (e as Error).message };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

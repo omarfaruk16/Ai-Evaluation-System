@@ -1,5 +1,6 @@
 node_modules/
 dist/
+console/dist/
 coverage/
 .env
 .env.*
@@ -7,3 +8,6 @@ coverage/
 !.env.production.example
 *.log
 .DS_Store
+
+# Local console login created for development (never commit)
+.console-dev-password

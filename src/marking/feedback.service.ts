@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { LlmClient, LlmError, emptyUsage } from '../llm/llm.types';
-import { UsageService } from '../usage/usage.service';
+import { LlmClient, LlmError } from '../llm/llm.types';
+import { errorFields, resultFields, UsageService } from '../usage/usage.service';
 import { feedbackPrompt, PROMPT_VERSIONS } from './prompts';
 import { feedbackJsonSchema, feedbackOutputSchema, type Rubric, type StudentFeedback } from './schemas';
 
@@ -38,11 +38,8 @@ export class FeedbackService {
         clientId: input.clientId,
         evaluationId: input.evaluationId,
         kind: 'feedback_rewrite',
-        model: result.model,
-        host: result.host,
         promptVersion: PROMPT_VERSIONS.feedback_rewrite,
-        usage: result.usage,
-        latencyMs: result.latencyMs,
+        ...resultFields(result),
         ok: parsed.success,
         error: parsed.success ? undefined : 'output did not match the schema',
       });
@@ -55,13 +52,8 @@ export class FeedbackService {
         clientId: input.clientId,
         evaluationId: input.evaluationId,
         kind: 'feedback_rewrite',
-        model: e.extra.model ?? this.llm.model,
-        host: e.extra.host ?? null,
         promptVersion: PROMPT_VERSIONS.feedback_rewrite,
-        usage: e.extra.usage ?? emptyUsage(),
-        latencyMs: e.extra.latencyMs ?? 0,
-        ok: false,
-        error: `${e.code}: ${e.message}`,
+        ...errorFields(e, this.llm.model),
       });
       return { feedback: null, error: `AI unavailable (${e.code})` };
     }

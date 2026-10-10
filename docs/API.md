@@ -5,7 +5,9 @@ For projects that connect to this service (the e-Exam system first). All endpoin
 
 - Base URL: `https://<your-ai-host>` (local development: `http://localhost:4200`)
 - Auth header: `Authorization: Bearer ams_…` (or `X-Api-Key: ams_…`)
-- Get a key on the AI server: `pnpm client:create --name <project> --webhook-url <https url>`
+- Get a key from the service operator (console → Projects → New project), or on the AI server:
+  `pnpm client:create --name <project> --webhook-url <https url>`
+- `/admin-api/*` belongs to the operator console and is not part of this API.
 
 ## Privacy rule
 
@@ -25,7 +27,7 @@ Every error has the same shape:
 |---|---|---|
 | 400 | `validation_failed` | The body or query is malformed; `details` lists each field |
 | 401 | `unauthorized` | Missing, wrong or disabled API key |
-| 402 | `budget_exceeded` | The project's monthly AI budget is used up; mark by hand |
+| 402 | `budget_exceeded` | The project's monthly usage limit is reached; mark by hand |
 | 404 | `not_found` | No such evaluation for this project |
 | 409 | `conflict` | Already being marked, not yet completed, or a concurrent duplicate submit (retry) |
 | 413 | `payload_too_large` | Body over 12 MB |
@@ -262,25 +264,68 @@ in that case, and retry the review later if you want the explanation.
 
 ## GET /v1/usage
 
-Tokens, cost and evaluation counts for your project. Defaults to the current calendar month (UTC).
-Optional `from` and `to` ISO times.
+Answers and rubric drafts for your project. Defaults to the current calendar month (UTC).
+Optional `from` and `to` ISO times. Answers count by when they were submitted.
 
 ```json
 {
   "from": "2026-10-01T00:00:00.000Z",
   "to": "2026-10-10T09:00:00.000Z",
-  "totalCostUsd": 1.4321,
-  "calls": [ { "kind": "marking", "ok": true, "count": 6120, "inputTokens": 9180000, "outputTokens": 3978000, "cachedTokens": 6100000, "reasoningTokens": 0, "costUsd": 1.27, "avgLatencyMs": 4100 } ],
-  "evaluations": { "completed": 6100, "failed": 20 },
-  "budget": { "monthlyBudgetUsd": 50, "spentThisMonthUsd": 1.4321 }
+  "answers": { "queued": 0, "running": 0, "completed": 6100, "failed": 20, "blank": 140, "reused": 75 },
+  "rubricDrafts": 38,
+  "usageLimit": { "set": true, "reached": false }
 }
 ```
+
+`usageLimit.reached` means new work is refused with `402 budget_exceeded` until next month or until
+the service operator raises the limit.
 
 ## GET /health
 
 No auth. `200` when the database and Redis are reachable, `503` otherwise. Includes queue counts.
 
 ---
+
+## Connecting a project (GET /v1/me, PUT /v1/webhook)
+
+The service operator creates your project and gives you two things: the **API URL** and an **API
+key**. A project then sets itself up — nobody copies a webhook secret by hand:
+
+1. `GET /v1/me` — checks the key and says which project it belongs to.
+2. `PUT /v1/webhook` with your webhook address — the service stores it and returns a new **signing
+   secret**. Store it (encrypted) and use it to verify webhooks. The previous secret stops working.
+3. `POST /v1/webhook/test` — the service sends a signed `ping` to your webhook right away and tells
+   you what your server answered.
+
+The e-Exam system does all three when a super admin presses **Connect** under **AI Marking**.
+
+### GET /v1/me
+
+```json
+{
+  "project": { "id": "43f9…", "name": "University of Rajshahi — e-Exam" },
+  "plan": { "name": "University standard" },
+  "webhook": { "url": "https://exam.example.edu/api/v1/ai-marking/webhook" },
+  "usageThisMonth": { "answersMarked": 6100, "failed": 20, "rubricDrafts": 38 },
+  "usageLimit": { "set": true, "reached": false },
+  "service": { "name": "AI Marking Service", "version": "0.1.0", "api": "v1" }
+}
+```
+
+### PUT /v1/webhook
+
+```json
+{ "url": "https://exam.example.edu/api/v1/ai-marking/webhook" }
+```
+
+→ `200 { "url": "https://…/webhook", "secret": "whsec_…" }`. `DELETE /v1/webhook` stops webhooks
+(poll `GET /v1/evaluations` instead).
+
+### POST /v1/webhook/test
+
+→ `200 { "url": "…", "ok": true, "status": 204, "latencyMs": 12, "body": "" }`. `ok` is false
+when your server didn't answer 2xx — for example because the address isn't reachable from the AI
+server, or the signature check failed.
 
 ## Webhooks
 
@@ -323,6 +368,9 @@ export function verifyAmsSignature(secret: string, rawBody: string, header: stri
 ```
 
 Compute the HMAC over the **raw** request body, before any JSON parsing.
+
+The operator console can send a `ping` event (`X-AMS-Event: ping`, `data: {}`) to test a client's
+webhook. It is signed the same way; verify the signature and answer 2xx, then ignore it.
 
 ## Recommended flow for an exam system
 

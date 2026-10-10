@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import type { Env } from '../config/env';
-import { emptyUsage, LlmClient, LlmError, type LlmRequest, type LlmResult, type LlmUsage } from './llm.types';
+import { emptyUsage, LlmError, type AdapterResult, type LlmAdapter, type LlmRequest, type LlmUsage } from './llm.types';
+import { apiKeyFor, type OpenRouterRouting, type ResolvedProfile } from './profile';
 
 interface OpenRouterUsage {
   prompt_tokens?: number;
@@ -44,68 +44,82 @@ function retryAfterMs(header: string | null): number | undefined {
   return Number.isFinite(date) ? Math.max(0, date - Date.now()) : undefined;
 }
 
+/** OpenRouter provider preferences: pinned hosts, quantization, zero data retention. */
+export function routingBody(r: OpenRouterRouting | null): Record<string, unknown> {
+  const routing = r ?? { only: [], quantizations: [], zdr: false, allowFallbacks: true, sort: null };
+  return {
+    ...(routing.only.length > 0 ? { only: routing.only } : {}),
+    ...(routing.quantizations.length > 0 ? { quantizations: routing.quantizations } : {}),
+    ...(routing.zdr ? { zdr: true } : {}),
+    data_collection: 'deny',
+    require_parameters: true,
+    allow_fallbacks: routing.allowFallbacks,
+    ...(routing.sort ? { sort: routing.sort } : {}),
+  };
+}
+
 /**
- * Calls OpenRouter's OpenAI-compatible chat API with pinned hosts, fp8 weights, zero data
- * retention and strict JSON output. Every request uses the same routing, so all students are
- * marked by the same model build.
+ * Calls an OpenAI-compatible chat completions API with a model profile's settings. For
+ * OpenRouter it adds pinned hosts, fp8, zero data retention and the reasoning switch, so every
+ * student is marked by the same model build. Strict JSON schema output where the provider
+ * supports it; otherwise JSON mode with the schema in the system prompt.
  */
-export class OpenRouterClient extends LlmClient {
-  readonly provider = 'openrouter';
-  readonly model: string;
-  private readonly logger = new Logger(OpenRouterClient.name);
+export class ChatCompletionsClient implements LlmAdapter {
+  private readonly logger = new Logger(ChatCompletionsClient.name);
 
-  constructor(private readonly env: Env) {
-    super();
-    this.model = env.OPENROUTER_MODEL;
-  }
+  constructor(private readonly app: { name: string; url?: string }) {}
 
-  private routing(): Record<string, unknown> {
-    const env = this.env;
-    return {
-      ...(env.OPENROUTER_PROVIDERS.length > 0 ? { only: env.OPENROUTER_PROVIDERS } : {}),
-      ...(env.OPENROUTER_QUANTIZATIONS.length > 0 ? { quantizations: env.OPENROUTER_QUANTIZATIONS } : {}),
-      ...(env.OPENROUTER_ZDR ? { zdr: true } : {}),
-      data_collection: 'deny',
-      require_parameters: true,
-      allow_fallbacks: true,
-    };
-  }
-
-  async complete(req: LlmRequest): Promise<LlmResult> {
-    const env = this.env;
-    const body = {
-      model: this.model,
+  async complete(p: ResolvedProfile, req: LlmRequest): Promise<AdapterResult> {
+    const openrouter = p.provider === 'openrouter';
+    const key = apiKeyFor(p);
+    if (!key) {
+      throw new LlmError(
+        `No API key: set ${p.apiKeyEnv ?? 'an *_API_KEY variable'} in the service environment`,
+        'auth_failed',
+        false,
+        { model: p.model },
+      );
+    }
+    const system =
+      p.jsonMode === 'json_object'
+        ? `${req.system}\n\nThe JSON must match this JSON Schema:\n${JSON.stringify(req.jsonSchema)}`
+        : req.system;
+    const body: Record<string, unknown> = {
+      model: p.model,
       messages: [
-        { role: 'system', content: req.system },
+        { role: 'system', content: system },
         { role: 'user', content: req.user },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: req.schemaName, strict: true, schema: req.jsonSchema },
-      },
-      provider: this.routing(),
-      temperature: env.LLM_TEMPERATURE,
-      seed: env.LLM_SEED,
-      max_tokens: req.maxOutputTokens ?? env.LLM_MAX_OUTPUT_TOKENS,
-      reasoning:
-        env.OPENROUTER_REASONING === 'off'
-          ? { enabled: false }
-          : { effort: env.OPENROUTER_REASONING, exclude: true },
+      response_format:
+        p.jsonMode === 'json_schema'
+          ? { type: 'json_schema', json_schema: { name: req.schemaName, strict: true, schema: req.jsonSchema } }
+          : { type: 'json_object' },
+      temperature: p.temperature,
+      ...(p.seed !== null ? { seed: p.seed } : {}),
+      max_tokens: req.maxOutputTokens ?? p.maxOutputTokens,
     };
+    if (openrouter) {
+      body.provider = routingBody(p.routing);
+      body.reasoning = p.reasoning === 'off' ? { enabled: false } : { effort: p.reasoning, exclude: true };
+    } else if (p.reasoning !== 'off') {
+      body.reasoning_effort = p.reasoning;
+    }
 
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${env.OPENROUTER_API_KEY ?? ''}`,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
-      'X-Title': env.OPENROUTER_APP_NAME,
     };
-    if (env.OPENROUTER_APP_URL) headers['HTTP-Referer'] = env.OPENROUTER_APP_URL;
+    if (openrouter) {
+      headers['X-Title'] = this.app.name;
+      if (this.app.url) headers['HTTP-Referer'] = this.app.url;
+    }
 
     const started = Date.now();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), env.LLM_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), p.timeoutMs);
     let res: Response;
     try {
-      res = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
+      res = await fetch(`${p.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
@@ -114,10 +128,10 @@ export class OpenRouterClient extends LlmClient {
     } catch (e) {
       const aborted = (e as Error).name === 'AbortError';
       throw new LlmError(
-        aborted ? `LLM request timed out after ${env.LLM_TIMEOUT_MS} ms` : `Network error: ${(e as Error).message}`,
+        aborted ? `LLM request timed out after ${p.timeoutMs} ms` : `Network error: ${(e as Error).message}`,
         aborted ? 'timeout' : 'network',
         true,
-        { latencyMs: Date.now() - started, model: this.model },
+        { latencyMs: Date.now() - started, model: p.model },
       );
     } finally {
       clearTimeout(timer);
@@ -132,7 +146,7 @@ export class OpenRouterClient extends LlmClient {
       json = null;
     }
     const usage = parseUsage(json?.usage);
-    const meta = { status: res.status, usage, model: json?.model ?? this.model, host: json?.provider ?? null, latencyMs };
+    const meta = { status: res.status, usage, model: json?.model ?? p.model, host: json?.provider ?? null, latencyMs };
 
     if (!res.ok) {
       const message = json?.error?.message ?? `HTTP ${res.status}`;

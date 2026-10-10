@@ -37,13 +37,23 @@ export const envSchema = z
     OPENROUTER_PROVIDERS: csv.default('deepinfra,parasail'),
     OPENROUTER_QUANTIZATIONS: csv.default('fp8'),
     OPENROUTER_ZDR: bool.default('true'),
-    OPENROUTER_REASONING: z.enum(['off', 'low', 'high']).default('off'),
+    OPENROUTER_REASONING: z.enum(['off', 'low', 'medium', 'high']).default('off'),
     OPENROUTER_APP_URL: z.string().url().optional(),
     OPENROUTER_APP_NAME: z.string().default('AI Marking Service'),
 
-    // Used only when the provider doesn't report cost (the mock adapter), in USD per 1M tokens.
+    // Prices for the first model profile (USD per 1M tokens). Used when a provider doesn't report
+    // a call's cost; afterwards each profile's prices are edited in the console.
     PRICE_INPUT_PER_MTOK: z.coerce.number().min(0).default(0.06),
+    PRICE_CACHED_INPUT_PER_MTOK: z.coerce.number().min(0).default(0),
     PRICE_OUTPUT_PER_MTOK: z.coerce.number().min(0).default(0.18),
+
+    // Operator console
+    CONSOLE_ENABLED: bool.default('true'),
+    // The public base URL clients use for this API (shown in the console's integration details).
+    PUBLIC_URL: z.string().url().optional(),
+    CONSOLE_DIR: z.string().optional(),
+    ADMIN_SESSION_HOURS: z.coerce.number().int().positive().max(24 * 30).default(12),
+    ADMIN_COOKIE_SECURE: bool.optional(),
 
     REALTIME_CONCURRENCY: z.coerce.number().int().positive().default(20),
     REALTIME_RATE_MAX: z.coerce.number().int().positive().default(30),

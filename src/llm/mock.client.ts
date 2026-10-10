@@ -1,7 +1,7 @@
 import { roundToStep } from '../common/text';
-import type { Env } from '../config/env';
 import type { FeedbackOutput, MarkingOutput, RubricDraftOutput } from '../marking/schemas';
-import { LlmClient, LlmError, type LlmContext, type LlmRequest, type LlmResult } from './llm.types';
+import { LlmError, type AdapterResult, type LlmAdapter, type LlmContext, type LlmRequest } from './llm.types';
+import { MOCK_MODEL, type ResolvedProfile } from './profile';
 
 const STOPWORDS = new Set([
   'that', 'this', 'with', 'from', 'when', 'have', 'into', 'than', 'then', 'they', 'their', 'there',
@@ -24,6 +24,12 @@ function firstWords(s: string, max: number): string {
   return m ? m[0] : s.trim();
 }
 
+function mockSummary(scored: { id: string; awarded: number }[], rubric: { id: string; marks: number }[]): string {
+  const full = scored.filter((c) => c.awarded >= (rubric.find((r) => r.id === c.id)?.marks ?? Infinity)).length;
+  const partly = scored.filter((c) => c.awarded > 0).length - full;
+  return `Fully covers ${full} of ${scored.length} rubric points${partly > 0 ? `, partly covers ${partly}` : ''}.`;
+}
+
 const flakySeen = new Set<string>();
 
 /**
@@ -33,15 +39,11 @@ const flakySeen = new Set<string>();
  *   __MOCK_FATAL__      fails with a non-retryable error
  *   __MOCK_FLAKY__      fails the first time it is seen, then succeeds
  */
-export class MockLlmClient extends LlmClient {
-  readonly provider = 'mock';
-  readonly model = 'mock/keyword-overlap';
+export class MockLlmClient implements LlmAdapter {
+  private readonly model = MOCK_MODEL;
 
-  constructor(private readonly env: Env) {
-    super();
-  }
-
-  async complete(req: LlmRequest): Promise<LlmResult> {
+  /** Reports token counts (about 4 characters per token) but no cost; the router prices them. */
+  async complete(_profile: ResolvedProfile, req: LlmRequest): Promise<AdapterResult> {
     const started = Date.now();
     this.hooks(req.context);
     const data = this.respond(req.context);
@@ -51,14 +53,7 @@ export class MockLlmClient extends LlmClient {
       data,
       model: this.model,
       host: 'mock',
-      usage: {
-        inputTokens,
-        outputTokens,
-        cachedTokens: 0,
-        reasoningTokens: 0,
-        costUsd:
-          (inputTokens * this.env.PRICE_INPUT_PER_MTOK + outputTokens * this.env.PRICE_OUTPUT_PER_MTOK) / 1e6,
-      },
+      usage: { inputTokens, outputTokens, cachedTokens: 0, reasoningTokens: 0, costUsd: 0 },
       latencyMs: Date.now() - started,
     };
   }
@@ -124,7 +119,7 @@ export class MockLlmClient extends LlmClient {
     const max = ctx.rubric.criteria.reduce((s, c) => s + c.marks, 0);
     return {
       criteria,
-      summary: `Covers ${criteria.filter((c) => c.awarded > 0).length} of ${criteria.length} rubric points.`,
+      summary: mockSummary(criteria, ctx.rubric.criteria),
       strengths: criteria.filter((c) => c.awarded > 0).map((c) => c.reason),
       weaknesses: missing.map((m) => `Missing: ${m.note}`),
       highlights,

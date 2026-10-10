@@ -42,23 +42,57 @@ enum WebhookStatus {
   failed
 }
 
+enum LlmProvider {
+  openrouter
+  openai_compatible
+  mock
+}
+
+// Who triggered an LLM call: a client over the API, or an operator in the console playground.
+enum CallOrigin {
+  client
+  console
+}
+
+enum BillingModel {
+  per_answer
+  cost_plus
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+  paid
+  void
+}
+
 // A project that uses this service (e.g. the e-Exam system). Each has its own API key.
 model Client {
-  id               String   @id @default(uuid())
-  name             String   @unique
-  apiKeyHash       String   @unique
+  id               String    @id @default(uuid())
+  name             String    @unique
+  apiKeyHash       String    @unique
   apiKeyPrefix     String
   webhookUrl       String?
   webhookSecret    String
-  monthlyBudgetUsd Decimal? @db.Decimal(12, 4)
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  monthlyBudgetUsd Decimal?  @db.Decimal(12, 4)
+  active           Boolean   @default(true)
+  planId           String?
+  contactName      String?
+  contactEmail     String?
+  billingAddress   String?
+  notes            String?
+  // Last time the project's API key was used (updated at most once a minute).
+  lastSeenAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  questions   QuestionContext[]
-  evaluations Evaluation[]
-  llmCalls    LlmCall[]
-  webhooks    WebhookDelivery[]
+  plan         PricingPlan?      @relation(fields: [planId], references: [id])
+  questions    QuestionContext[]
+  evaluations  Evaluation[]
+  llmCalls     LlmCall[]
+  webhooks     WebhookDelivery[]
+  rubricDrafts RubricDraft[]
+  invoices     Invoice[]
 }
 
 // The shared part of every marking request: question, model answer and approved rubric.
@@ -135,9 +169,11 @@ model Evaluation {
 // One row per LLM request, successful or not: the usage and cost ledger.
 model LlmCall {
   id              BigInt      @id @default(autoincrement())
-  clientId        String
+  clientId        String?
+  origin          CallOrigin  @default(client)
   evaluationId    String?
   kind            LlmCallKind
+  profileId       String?
   model           String
   host            String?
   promptVersion   String
@@ -146,14 +182,17 @@ model LlmCall {
   cachedTokens    Int         @default(0)
   reasoningTokens Int         @default(0)
   costUsd         Decimal     @default(0) @db.Decimal(12, 6)
+  // true when the provider didn't report a cost and it was computed from the profile's prices
+  costEstimated   Boolean     @default(false)
   latencyMs       Int
   ok              Boolean
   error           String?
   createdAt       DateTime    @default(now())
 
-  client Client @relation(fields: [clientId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
 
   @@index([clientId, createdAt])
+  @@index([createdAt])
   @@index([evaluationId])
 }
 
@@ -174,4 +213,138 @@ model WebhookDelivery {
 
   @@index([clientId, status])
   @@index([evaluationId])
+}
+
+// ───────────────────────── Operator console ─────────────────────────
+
+// How to call one model: provider, model id, routing, generation settings and prices.
+// API keys never live here; `apiKeyEnv` names the environment variable that holds the key.
+model ModelProfile {
+  id                      String      @id @default(uuid())
+  name                    String      @unique
+  provider                LlmProvider
+  model                   String
+  baseUrl                 String?
+  apiKeyEnv               String?
+  // OpenRouter provider preferences: { only, quantizations, zdr, allowFallbacks, sort }
+  routing                 Json?
+  reasoning               String      @default("off")
+  temperature             Float       @default(0)
+  seed                    Int?        @default(7)
+  maxOutputTokens         Int         @default(2000)
+  timeoutMs               Int         @default(60000)
+  jsonMode                String      @default("json_schema")
+  // USD per 1M tokens, used when the provider doesn't report the cost of a call
+  inputPricePerMTok       Decimal     @default(0) @db.Decimal(12, 6)
+  cachedInputPricePerMTok Decimal     @default(0) @db.Decimal(12, 6)
+  outputPricePerMTok      Decimal     @default(0) @db.Decimal(12, 6)
+  notes                   String?
+  archived                Boolean     @default(false)
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+}
+
+// Small JSON settings edited from the console (model assignments, billing details).
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions AdminSession[]
+}
+
+model AdminSession {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  adminId    String
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+// What a client pays. per_answer: monthly fee + included answers + price per extra answer.
+// cost_plus: monthly fee + AI cost with a markup. Rubric drafts are priced separately in both.
+model PricingPlan {
+  id                  String       @id @default(uuid())
+  name                String       @unique
+  currency            String       @default("BDT")
+  billingModel        BillingModel @default(per_answer)
+  monthlyFee          Decimal      @default(0) @db.Decimal(14, 2)
+  includedAnswers     Int          @default(0)
+  pricePerAnswer      Decimal      @default(0) @db.Decimal(12, 4)
+  pricePerRubricDraft Decimal      @default(0) @db.Decimal(12, 4)
+  markupPercent       Decimal      @default(0) @db.Decimal(8, 2)
+  chargeBlank         Boolean      @default(false)
+  chargeReused        Boolean      @default(true)
+  taxPercent          Decimal      @default(0) @db.Decimal(5, 2)
+  notes               String?
+  archived            Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  clients Client[]
+}
+
+// One row per rubric-draft request (a request can take two LLM calls). Billing counts ok rows.
+model RubricDraft {
+  id        String     @id @default(uuid())
+  clientId  String?
+  origin    CallOrigin @default(client)
+  ok        Boolean
+  criteria  Int        @default(0)
+  costUsd   Decimal    @default(0) @db.Decimal(12, 6)
+  error     String?
+  createdAt DateTime   @default(now())
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@index([clientId, createdAt])
+}
+
+// A frozen monthly bill. Lines, totals, cost and exchange rate are copied at creation, so later
+// price changes never alter an invoice.
+model Invoice {
+  id          String        @id @default(uuid())
+  number      String        @unique
+  clientId    String
+  periodStart DateTime
+  periodEnd   DateTime
+  currency    String
+  // { to: client billing details, from: your business details } as they were when created
+  parties     Json
+  lines       Json
+  subtotal    Decimal       @db.Decimal(14, 2)
+  taxPercent  Decimal       @default(0) @db.Decimal(5, 2)
+  tax         Decimal       @default(0) @db.Decimal(14, 2)
+  total       Decimal       @db.Decimal(14, 2)
+  costUsd     Decimal       @default(0) @db.Decimal(12, 6)
+  fxUsdRate   Decimal?      @db.Decimal(12, 4)
+  status      InvoiceStatus @default(draft)
+  issuedAt    DateTime?
+  dueAt       DateTime?
+  paidAt      DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId, periodStart])
 }

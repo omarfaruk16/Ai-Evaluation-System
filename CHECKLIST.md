@@ -52,12 +52,33 @@ Legend: `[x]` done · `[ ]` to do · `[~]` partly done
 - [ ] 4.6 Smoke test against the real model (needs an OpenRouter key and your approval to spend)
 
 ## Phase 5 — Connect the e-Exam system (after the service is verified)
-- [ ] 5.1 Rubric data: `Question.rubric`, status and source; Rubric sheet in the Excel template; snapshot at publish
-- [ ] 5.2 AI client module in the exam API: calls this service, receives webhooks, stores suggestions
-- [ ] 5.3 Question Bank: rubric draft review (approve, edit, draft again)
-- [ ] 5.4 Grading workspace: highlighted answer, why-this-mark, strong and weak points, per-criterion marks, tick
-- [ ] 5.5 Student result page: approved explanation and highlights
+- [x] 5.1 Rubric data: `Question.rubric`, status and source; Rubric sheet in the Excel template; snapshot at publish
+- [x] 5.2 AI client module in the exam API: calls this service, receives webhooks, stores suggestions
+  - Verified locally 2026-10-10 (mock model): rubric draft → approve → publish → 3 student answers → suggestions in ~16 s → accept/adjust → review synced → results auto-published with explanations
+- [ ] 5.3 Question Bank: rubric draft review (approve, edit, draft again) — built, API verified; browser check pending
+- [ ] 5.4 Grading workspace: highlighted answer, why-this-mark, strong and weak points, per-criterion marks, tick — built, API verified; browser check pending
+- [ ] 5.5 Student result page: approved explanation and highlights — built, API verified; browser check pending
 - [ ] 5.6 Pilot check on past teacher-graded answers (agreement with teachers, Bangla subset)
+
+## Phase 6 — Operator console (`/console`)
+Backend (`/admin-api`, separate from the client API):
+- [x] 6.1 Data: admin users + sessions, model profiles, settings, pricing plans, rubric-draft log, invoices; ledger records profile, origin and estimated cost
+- [x] 6.2 Admin sign-in: scrypt passwords, httpOnly session cookie, CSRF header, login rate limit, `admin:create` CLI
+- [x] 6.3 Model profiles: OpenRouter / any OpenAI-compatible API / mock; per-task assignment (marking, rubric draft, feedback) editable at runtime; keys stay in env
+- [x] 6.4 Provider info: OpenRouter key usage and limit, model hosts with live prices, import prices, test call
+- [x] 6.5 Costs: actual cost from the provider, estimated from profile prices when not reported
+- [x] 6.6 Pricing plans: per-answer (fee + included + overage) or cost-plus; rubric drafts; blank/reused rules; tax
+- [x] 6.7 Billing: monthly statements (units, charges, my cost, margin), frozen invoices with status, CSV export
+- [x] 6.8 Clients: create (key shown once), edit, plan, budget, rotate key/secret, disable, test webhook
+- [x] 6.9 Evaluations explorer with full detail (highlights, LLM calls, webhooks), rerun; webhook retry
+- [x] 6.10 Playground: draft a rubric and mark an answer with any profile, see tokens, cost and latency
+- [x] 6.11 System: queues, failed jobs (retry/remove), config summary; overview metrics incl. teacher agreement
+Frontend (`console/`, React + Vite + Tailwind):
+- [x] 6.12 Shell: sign-in, sidebar, light/dark, toasts, empty and error states
+- [x] 6.13 Pages: Overview, Clients, Models & providers, Pricing, Quote calculator, Billing & invoices, Evaluations, Playground, Webhooks, System, Settings
+- [x] 6.14 Served by the API at `/console` (one image), dev server with proxy; Docker build updated
+- [x] 6.15 Tests (billing maths, cost estimates, admin auth e2e) and docs
+  - Verified 2026-10-10: 94 tests pass (58 unit, 36 e2e); every page checked in the browser (dark, light, phone width); Docker image builds and serves /console
 
 ## Later improvements
 - [ ] OpenRouter Batch API for the deferred lane once a host serves this model in batch
