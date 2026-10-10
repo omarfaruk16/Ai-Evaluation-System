@@ -1,4 +1,4 @@
-# AI Marking Service
+# AI Evaluation System — AI Marking Service
 
 A standalone service that drafts marking rubrics and marks written exam answers with an LLM,
 for teachers to approve. It runs on its own server with its own PostgreSQL and Redis, and any
