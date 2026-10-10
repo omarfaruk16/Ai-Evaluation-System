@@ -47,7 +47,7 @@ Legend: `[x]` done · `[ ]` to do · `[~]` partly done
 - [x] 4.1 Unit tests: marks, highlights (English, Bangla, LaTeX), rubric validation, lane router, webhook signatures
 - [x] 4.2 End-to-end test with the mock adapter (API → queue → worker → result → webhook)
 - [x] 4.3 `docs/API.md` for client projects, with webhook verification code
-- [~] 4.4 Dockerfile and `docker-compose.prod.yml` (api, worker, postgres, redis) — image build being verified
+- [x] 4.4 Dockerfile and `docker-compose.prod.yml` (api, worker, postgres, redis) — verified: image boots healthy in production mode, runs as non-root
 - [x] 4.5 README: local run, deploy to a separate VPS behind nginx with TLS
 - [ ] 4.6 Smoke test against the real model (needs an OpenRouter key and your approval to spend)
 

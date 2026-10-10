@@ -13,6 +13,16 @@ import { WebhookService } from './webhooks/webhook.service';
 
 const services = [UsageService, WebhookService, MarkingService, RubricDraftService, FeedbackService];
 
+/** pino-pretty is a dev dependency; the production image doesn't ship it. */
+function prettyAvailable(): boolean {
+  try {
+    require.resolve('pino-pretty');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Everything shared by the HTTP API and the worker process. */
 @Module({
   imports: [
@@ -24,7 +34,7 @@ const services = [UsageService, WebhookService, MarkingService, RubricDraftServi
           level: env.LOG_LEVEL,
           redact: ['req.headers.authorization', 'req.headers["x-api-key"]'],
           autoLogging: { ignore: (req) => req.url === '/health' },
-          ...(env.NODE_ENV === 'development'
+          ...(env.NODE_ENV === 'development' && prettyAvailable()
             ? { transport: { target: 'pino-pretty', options: { singleLine: true } } }
             : {}),
         },
