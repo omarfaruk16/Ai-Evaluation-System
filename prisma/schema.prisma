@@ -33,7 +33,7 @@ enum ReviewDecision {
 enum LlmCallKind {
   marking
   rubric_draft
-  feedback_rewrite
+  feedback_rewrite // retired: student feedback is no longer written; kept for old usage rows
 }
 
 enum WebhookStatus {
@@ -72,6 +72,8 @@ model Client {
   name             String    @unique
   apiKeyHash       String    @unique
   apiKeyPrefix     String
+  // The key itself, AES-GCM sealed with SECRETS_ENCRYPTION_KEY, so operators can copy it again.
+  apiKeyEncrypted  String?
   webhookUrl       String?
   webhookSecret    String
   monthlyBudgetUsd Decimal?  @db.Decimal(12, 4)
@@ -139,7 +141,7 @@ model Evaluation {
   weaknesses      String[]
   highlights      Json?
   missing         Json?
-  studentFeedback Json?
+  studentFeedback Json? // retired, no longer written
   confidence      Float?
   flags           String[]
   model           String?
@@ -150,7 +152,7 @@ model Evaluation {
   decision      ReviewDecision?
   finalScore    Float?
   finalCriteria Json?
-  finalFeedback Json?
+  finalFeedback Json? // retired, no longer written
   reviewedAt    DateTime?
 
   createdAt   DateTime  @default(now())

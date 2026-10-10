@@ -6,7 +6,7 @@ import { CopyButton, Segmented, Switch } from '@/components/ui/controls';
 import { Field, Input, Select } from '@/components/ui/input';
 import { ErrorState, PageHeader, PageSkeleton } from '@/components/ui/page';
 import { computeCharges, estimateAnswerCostUsd, estimateRubricDraftUsd, type PlanTerms } from '@/lib/billing';
-import { fmtInt, fmtMoney, fmtNum, fmtPct, fmtUsd } from '@/lib/format';
+import { fmtInt, fmtMoney, fmtNum, fmtPct, fmtCost, fmtUsd } from '@/lib/format';
 import type { Plan, Prices, UnitCosts } from '@/lib/types';
 import { LinesChart } from '../shared/charts';
 import { useBillingSettings, useModels, usePlans, useUnitCosts } from '../shared/queries';
@@ -33,7 +33,6 @@ const START = {
   language: 'mixed' as keyof typeof LANGUAGES,
   tokensPerWord: String(LANGUAGES.mixed.tokensPerWord),
   cacheShare: '0',
-  adjustRate: '25',
   overhead: '5',
   profileId: '',
   useMeasured: true,
@@ -78,7 +77,7 @@ function Calculator({
   fxRates: Record<string, number>;
   defaultCurrency: string;
 }) {
-  const initial = { ...START, profileId: unit.markingProfile.id ?? profiles[0]?.id ?? '', currency: defaultCurrency, adjustRate: unit.adjustRate !== null ? String(Math.round(unit.adjustRate * 100)) : START.adjustRate };
+  const initial = { ...START, profileId: unit.markingProfile.id ?? profiles[0]?.id ?? '', currency: defaultCurrency };
   const [s, setS] = useState(initial);
   const set = <K extends keyof typeof START>(k: K, v: (typeof START)[K]) => setS((x) => ({ ...x, [k]: v }));
 
@@ -105,7 +104,6 @@ function Calculator({
         tokensPerWord: num(s.tokensPerWord, 1.4),
         outputTokens: unit.perMarkingCall.outputTokens ?? DEFAULT_ASSUMPTIONS.outputTokens,
         cacheShare: num(s.cacheShare) / 100,
-        adjustRate: num(s.adjustRate) / 100,
         overhead: num(s.overhead) / 100,
       },
       prices,
@@ -169,7 +167,7 @@ function Calculator({
         `Estimated monthly total: ${fmtMoney(r.charges.total, currency)} (${fmtMoney(r.charges.total * 12, currency)} per year)`,
         students ? `That is about ${fmtMoney(r.charges.total / students, currency)} per student per month.` : null,
         ``,
-        `Included: rubric-based mark suggestions with explanations, highlighted strengths and weaknesses, student feedback after teacher approval, and identical-answer reuse. Teachers approve every mark.`,
+        `Included: rubric-based mark suggestions with explanations, highlighted strengths and weaknesses, and identical-answer reuse. Teachers approve every mark.`,
       ]
         .filter((l) => l !== null)
         .join('\n')
@@ -214,8 +212,8 @@ function Calculator({
                 <Switch
                   checked={s.useMeasured}
                   onChange={(v) => set('useMeasured', v)}
-                  label={`Use measured cost: ${fmtUsd(unit.costPerAnswerUsd)} per answer`}
-                  description={`From ${fmtInt(unit.sample.aiMarked)} answers marked in the last ${unit.days} days, including retries and feedback rewrites.`}
+                  label={`Use measured cost: ${fmtCost(unit.costPerAnswerUsd)} per answer`}
+                  description={`From ${fmtInt(unit.sample.aiMarked)} answers marked in the last ${unit.days} days, including retries.`}
                 />
               ) : (
                 <p className="bg-info-soft text-info flex gap-2 rounded-lg px-3 py-2 text-[13px]">
@@ -243,12 +241,11 @@ function Calculator({
                 </Field>
                 <NumField id="q-tpw" label="Tokens per word" value={s.tokensPerWord} onChange={(v) => set('tokensPerWord', v)} step={0.1} hint="Bangla script uses more tokens" />
                 <NumField id="q-cache" label="Prompt cache hits" value={s.cacheShare} onChange={(v) => set('cacheShare', v)} suffix="%" hint="If the host caches prompts" />
-                <NumField id="q-adjust" label="Teachers change marks" value={s.adjustRate} onChange={(v) => set('adjustRate', v)} suffix="%" hint="Each change rewrites feedback" />
                 <NumField id="q-over" label="Retries and failures" value={s.overhead} onChange={(v) => set('overhead', v)} suffix="%" />
               </div>
               <p className="text-muted text-xs">
                 Estimate: about {fmtInt(r.est.inputTokens)} input and {fmtInt(unit.perMarkingCall.outputTokens ?? DEFAULT_ASSUMPTIONS.outputTokens)} output tokens per answer →{' '}
-                {fmtUsd(r.est.perAnswer)} per answer, {fmtUsd(r.perDraftUsd)} per rubric draft.
+                {fmtCost(r.est.perAnswer)} per answer, {fmtCost(r.perDraftUsd)} per rubric draft.
               </p>
             </CardBody>
           </Card>

@@ -1,7 +1,7 @@
 import '../config/load-env';
 import { PrismaClient } from '@prisma/client';
 import { parseArgs } from 'node:util';
-import { generateApiKey, generateWebhookSecret } from '../auth/api-key';
+import { generateApiKey, generateWebhookSecret, sealApiKey } from '../auth/api-key';
 
 // Replaces a client's API key (and optionally its webhook secret). The old key stops working
 // within a minute, once the API's key cache expires.
@@ -23,7 +23,7 @@ async function main(): Promise<void> {
     const webhookSecret = values['webhook-secret'] ? generateWebhookSecret() : undefined;
     await prisma.client.update({
       where: { name: values.name },
-      data: { apiKeyHash: hash, apiKeyPrefix: prefix, ...(webhookSecret ? { webhookSecret } : {}) },
+      data: { apiKeyHash: hash, apiKeyPrefix: prefix, apiKeyEncrypted: sealApiKey(key, process.env.SECRETS_ENCRYPTION_KEY), ...(webhookSecret ? { webhookSecret } : {}) },
     });
     console.log(`New credentials for ${values.name}. Shown once:`);
     console.log(`  AI_MARKING_API_KEY=${key}`);

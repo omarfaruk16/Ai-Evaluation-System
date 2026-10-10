@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useBillingSettings } from '@/features/shared/queries';
+import { setCostCurrency } from '@/lib/format';
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from '@/components/ui/menu';
 import { post } from '@/lib/api';
 import { ME_KEY } from '@/lib/auth';
@@ -165,6 +167,12 @@ function UserMenu({ me }: { me: Me }) {
 
 export function AppShell({ me }: { me: Me }) {
   const [open, setOpen] = useState(false);
+  // AI costs are shown in the default billing currency; pages wait for its rate so they never
+  // flash dollars first, and remount when the currency or rate changes.
+  const billing = useBillingSettings();
+  const costCode = billing.data?.defaultCurrency;
+  const costRate = costCode ? billing.data?.fxRates[costCode] : undefined;
+  setCostCurrency(costCode, costRate);
   const location = useLocation();
   useEffect(() => setOpen(false), [location.pathname]);
 
@@ -199,7 +207,7 @@ export function AppShell({ me }: { me: Me }) {
           <Brand />
         </header>
         <main className="mx-auto w-full max-w-[1320px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:max-w-none print:p-0">
-          <Outlet />
+          {billing.isPending ? null : <Outlet key={`${costCode ?? 'USD'}:${costRate ?? 1}`} />}
         </main>
       </div>
     </div>

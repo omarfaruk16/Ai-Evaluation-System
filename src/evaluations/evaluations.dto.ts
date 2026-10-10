@@ -49,7 +49,6 @@ export const reviewSchema = z
     decision: z.enum(['accepted', 'adjusted', 'rejected']),
     finalCriteria: z.array(z.object({ id: criterionIdSchema, awarded: z.number().min(0) })).optional(),
     teacherNote: z.string().trim().max(2_000).optional(),
-    rewriteFeedback: z.boolean().default(true),
   })
   .refine((v) => v.decision !== 'adjusted' || (v.finalCriteria?.length ?? 0) > 0, {
     message: 'finalCriteria is required when decision is "adjusted"',
@@ -63,6 +62,16 @@ export const rubricDraftSchema = z.object({
   maxMarks: z.number().positive().max(1_000),
   markStep: z.number().positive().max(100).default(0.5),
   maxCriteria: z.number().int().min(1).max(12).default(6),
+});
+
+/** One answer marked straight away (nothing stored), to check a rubric before an exam uses it. */
+export const tryMarkSchema = z.object({
+  question: z.string().trim().min(1).max(20_000),
+  modelAnswer: z.string().trim().min(1).max(20_000),
+  maxMarks: z.number().positive().max(1_000),
+  markStep: z.number().positive().max(100).default(0.5),
+  rubric: rubricSchema,
+  answer: z.string().max(20_000),
 });
 
 export const usageQuerySchema = z.object({

@@ -17,7 +17,6 @@ export function toView(ev: Evaluation) {
     weaknesses: ev.weaknesses,
     highlights: ev.highlights ?? [],
     missing: ev.missing ?? [],
-    studentFeedback: ev.studentFeedback,
     confidence: ev.confidence,
     flags: ev.flags,
     // Highlight offsets refer to this exact text (NFC-normalised, trimmed).
@@ -32,7 +31,6 @@ export function toView(ev: Evaluation) {
           decision: ev.decision,
           finalScore: ev.finalScore,
           finalCriteria: ev.finalCriteria,
-          finalFeedback: ev.finalFeedback,
           reviewedAt: ev.reviewedAt?.toISOString() ?? null,
         }
       : null,

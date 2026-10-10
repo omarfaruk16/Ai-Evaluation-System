@@ -9,7 +9,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton, Stat } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { errorMessage, get, post } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtMonth, fmtUsd } from '@/lib/format';
+import { costCurrencyCode, fmtCost, fmtInt, fmtMoney, fmtMonth, usdNote } from '@/lib/format';
 import type { Invoice, Statements } from '@/lib/types';
 import { MonthPicker } from '../shared/MonthPicker';
 
@@ -72,8 +72,8 @@ export default function StatementsPage() {
                 <Stat key={cur} label={`Billed (${cur}, before tax)`} value={fmtMoney(t.subtotal, cur)} sub={`${fmtMoney(t.total, cur)} with tax · margin ${fmtMoney(t.margin, cur)}`} />
               ))
             )}
-            <Stat label="AI cost from projects" value={fmtUsd(q.data.costUsd)} sub={q.data.fxRates.BDT ? `≈ ${fmtMoney(q.data.costUsd * q.data.fxRates.BDT, 'BDT')}` : undefined} />
-            <Stat label="Playground spend" value={fmtUsd(q.data.consoleCostUsd)} sub="Your own tests — not billed" />
+            <Stat label="AI cost from projects" value={fmtCost(q.data.costUsd)} sub={usdNote(q.data.costUsd) ?? undefined} />
+            <Stat label="Playground spend" value={fmtCost(q.data.consoleCostUsd)} sub="Your own tests — not billed" />
           </div>
 
           <Card>
@@ -115,8 +115,9 @@ export default function StatementsPage() {
                         <TdNum>{r.charges ? fmtMoney(r.charges.subtotal, cur) : '—'}</TdNum>
                         <TdNum className="font-medium">{r.charges ? fmtMoney(r.charges.total, cur) : '—'}</TdNum>
                         <TdNum>
-                          {fmtUsd(r.usage.costUsd)}
-                          {r.charges && <span className="text-muted block text-xs">{fmtMoney(r.charges.cost, cur)}</span>}
+                          {fmtCost(r.usage.costUsd)}
+                          {r.charges && cur !== costCurrencyCode() && <span className="text-muted block text-xs">{fmtMoney(r.charges.cost, cur)}</span>}
+                          {usdNote(r.usage.costUsd) && <span className="text-muted block text-xs">{usdNote(r.usage.costUsd)}</span>}
                         </TdNum>
                         <TdNum className={r.charges && r.charges.margin < 0 ? 'text-danger' : ''}>
                           {r.charges ? fmtMoney(r.charges.margin, cur) : '—'}
@@ -145,7 +146,7 @@ export default function StatementsPage() {
           </Card>
           <p className="text-muted flex items-start gap-2 text-xs leading-relaxed">
             <Info className="mt-0.5 size-3.5 shrink-0" />
-            AI cost includes failed calls, retries and feedback rewrites. Costs in other currencies use the exchange rates under Settings; an invoice keeps the rate it was made with.
+            AI cost includes failed calls and retries. Costs in other currencies use the exchange rates under Settings; an invoice keeps the rate it was made with.
           </p>
         </div>
       )}

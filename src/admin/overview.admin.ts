@@ -119,7 +119,7 @@ export class OverviewService {
       this.webhookQueue.getJobCounts('waiting', 'active', 'delayed', 'failed'),
     ]);
     const assigned = await Promise.all(
-      (['marking', 'rubric_draft', 'feedback_rewrite'] as const).map(async (k) => {
+      (['marking', 'rubric_draft'] as const).map(async (k) => {
         const p = await this.profiles.forKind(k);
         return [k, { id: p.id, name: p.name, provider: p.provider, model: p.model }] as const;
       }),

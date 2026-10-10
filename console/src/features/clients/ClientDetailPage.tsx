@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, KeyRound, MoreHorizontal, Pencil, Power, Send, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, KeyRound, MoreHorizontal, Pencil, Power, Send, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,7 +13,8 @@ import { DefinitionList, EmptyState, ErrorState, PageSkeleton, Stat } from '@/co
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { errorMessage, get, patch, post } from '@/lib/api';
 import { useApiBaseUrl } from '@/lib/auth';
-import { fmtDate, fmtInt, fmtMoney, fmtMonth, fmtPct, fmtRelative, fmtUsd } from '@/lib/format';
+import { fmtDate, fmtInt, fmtMoney, fmtMonth, fmtPct, fmtRelative, fmtCost } from '@/lib/format';
+import { maskSecret } from '@/lib/mask';
 import type { Client, ClientDetail } from '@/lib/types';
 import { BarsChart, ChartFrame } from '../shared/charts';
 import { ClientForm } from './ClientForm';
@@ -159,7 +160,7 @@ export default function ClientDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label={`Answers in ${fmtMonth(current.month)}`} value={fmtInt(current.usage.completed)} sub={`${fmtInt(current.usage.failed)} failed · ${fmtInt(current.usage.rubricDrafts)} rubric drafts`} />
-        <Stat label="AI cost this month" value={fmtUsd(current.usage.costUsd)} sub={c.monthlyBudgetUsd !== null ? `Budget ${fmtUsd(c.monthlyBudgetUsd)} · ${fmtPct(current.usage.costUsd / (c.monthlyBudgetUsd || 1), 0)} used` : 'No budget cap'} />
+        <Stat label="AI cost this month" value={fmtCost(current.usage.costUsd)} sub={c.monthlyBudgetUsd !== null ? `Budget ${fmtCost(c.monthlyBudgetUsd)} · ${fmtPct(current.usage.costUsd / (c.monthlyBudgetUsd || 1), 0)} used` : 'No budget cap'} />
         <Stat label="Billed so far" value={current.charges ? fmtMoney(current.charges.subtotal, currency) : '—'} sub={c.plan ? `${c.plan.name} plan` : 'No pricing plan'} />
         <Stat
           label="Margin this month"
@@ -196,12 +197,7 @@ export default function ClientDetailPage() {
                 <CopyButton value={apiBase} />
               </div>
             </div>
-            <div>
-              <p className="text-muted mb-1 text-xs">API key</p>
-              <p className="font-mono text-xs">
-                {c.apiKeyHint} <span className="text-muted font-sans">· lost it? Rotate the key (⋯ menu)</span>
-              </p>
-            </div>
+            <ProjectKey client={c} onRotate={() => rotateKey.mutate()} rotating={rotateKey.isPending} />
             <div>
               <p className="text-muted mb-1 text-xs">Status</p>
               <p className="text-[13px]">
@@ -239,7 +235,7 @@ export default function ClientDetailPage() {
                 ['Contact', c.contactName || '—'],
                 ['Email', c.contactEmail || '—'],
                 ['Address', c.billingAddress ? <span className="whitespace-pre-line">{c.billingAddress}</span> : '—'],
-                ['AI budget', c.monthlyBudgetUsd !== null ? `${fmtUsd(c.monthlyBudgetUsd)} per month` : 'No cap'],
+                ['AI budget', c.monthlyBudgetUsd !== null ? `${fmtCost(c.monthlyBudgetUsd)} per month` : 'No cap'],
                 ['Notes', c.notes ? <span className="whitespace-pre-line">{c.notes}</span> : '—'],
               ]}
             />
@@ -320,6 +316,66 @@ export default function ClientDetailPage() {
 
       {editing && <ClientForm open onOpenChange={setEditing} client={c} />}
       {secret && <SecretsDialog open onClose={() => setSecret(null)} title={secret.title} apiKey={secret.apiKey} webhookSecret={secret.webhookSecret} />}
+    </div>
+  );
+}
+
+/** The project's API key: masked, with Show and Copy, so it can be handed out again at any time. */
+function ProjectKey({ client: c, onRotate, rotating }: { client: Client; onRotate: () => void; rotating: boolean }) {
+  const [key, setKey] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
+  const reveal = useMutation({
+    mutationFn: () => post<{ apiKey: string }>(`/clients/${c.id}/reveal-key`),
+    onSuccess: (r) => setKey(r.apiKey),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
+  // A rotation replaces the key; drop the copy fetched for the old one.
+  const [hint, setHint] = useState(c.apiKeyHint);
+  if (hint !== c.apiKeyHint) {
+    setHint(c.apiKeyHint);
+    setKey(null);
+    setShown(false);
+  }
+
+  return (
+    <div>
+      <p className="text-muted mb-1 text-xs">API key</p>
+      {!c.apiKeyStored ? (
+        <div className="space-y-1.5">
+          <p className="font-mono text-xs">{c.apiKeyHint}</p>
+          <p className="text-muted text-xs leading-relaxed">
+            This key was created before keys were saved, so it can’t be shown.{' '}
+            <button type="button" className="text-primary font-medium hover:underline disabled:opacity-50" onClick={onRotate} disabled={rotating}>
+              Rotate it once
+            </button>{' '}
+            — after that it can always be copied here. The project must then reconnect with the new key.
+          </p>
+        </div>
+      ) : key ? (
+        <div className="flex items-center gap-1">
+          <code className="bg-surface-2 min-w-0 flex-1 truncate rounded px-2 py-1 font-mono text-xs" aria-label={shown ? 'API key' : 'API key, hidden'}>
+            {shown ? key : maskSecret(key)}
+          </code>
+          <button
+            type="button"
+            onClick={() => setShown((v) => !v)}
+            className="text-muted hover:bg-surface-3 hover:text-foreground rounded-md p-1.5"
+            aria-label={shown ? 'Hide key' : 'Show key'}
+            title={shown ? 'Hide key' : 'Show key'}
+          >
+            {shown ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          </button>
+          <CopyButton value={key} onFail={() => setShown(true)} />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <code className="bg-surface-2 min-w-0 flex-1 truncate rounded px-2 py-1 font-mono text-xs">{c.apiKeyHint}</code>
+          <Button variant="outline" size="sm" onClick={() => reveal.mutate()} loading={reveal.isPending}>
+            <KeyRound /> Get key
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

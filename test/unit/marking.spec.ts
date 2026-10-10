@@ -34,7 +34,6 @@ const output = (over: Partial<MarkingOutput> = {}): MarkingOutput => ({
     { quote: 'this text is not in the answer', kind: 'strength', criterion: 'c2', note: 'x' },
   ],
   missing: [{ criterion: 'c4', note: 'receive window' }, { criterion: 'zzz', note: 'unknown id' }],
-  studentFeedback: { didWell: ['Good on ACKs'], toImprove: ['Add the receive window'] },
   confidence: 0.86,
   flags: ['injection_attempt', 'made_up_flag'],
   ...over,

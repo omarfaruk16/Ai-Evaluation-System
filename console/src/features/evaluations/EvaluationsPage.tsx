@@ -12,8 +12,8 @@ import { Input, Select } from '@/components/ui/input';
 import { DefinitionList, EmptyState, ErrorState, PageHeader, PageSkeleton, Pagination } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { errorMessage, get, post } from '@/lib/api';
-import { fmtDate, fmtInt, fmtMs, fmtNum, fmtRelative, fmtUsd } from '@/lib/format';
-import { TASK_LABEL, type Client, type EvaluationDetail, type EvaluationRow, type Paged } from '@/lib/types';
+import { fmtDate, fmtInt, fmtMs, fmtNum, fmtRelative, fmtCost } from '@/lib/format';
+import { CALL_KIND_LABEL, type Client, type EvaluationDetail, type EvaluationRow, type Paged } from '@/lib/types';
 import { MarkingResultView } from '../shared/MarkingResultView';
 
 const FILTERS = ['clientId', 'status', 'lane', 'decision', 'flag', 'q'] as const;
@@ -241,7 +241,6 @@ function EvaluationSheet({ id, onClose }: { id: string; onClose: () => void }) {
                   weaknesses: ev.weaknesses,
                   highlights: ev.highlights,
                   missing: ev.missing,
-                  studentFeedback: ev.studentFeedback,
                   confidence: ev.confidence,
                   flags: ev.flags,
                 }}
@@ -287,7 +286,7 @@ function EvaluationSheet({ id, onClose }: { id: string; onClose: () => void }) {
             <section className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <h3 className="text-sm font-semibold">Model calls</h3>
-                <span className="text-muted text-xs">Total {fmtUsd(d.costUsd)}</span>
+                <span className="text-muted text-xs">Total {fmtCost(d.costUsd)}</span>
               </div>
               {d.calls.length === 0 ? (
                 <p className="text-muted text-[13px]">{ev.reusedFromId ? 'None — the result was reused.' : 'None.'}</p>
@@ -307,7 +306,7 @@ function EvaluationSheet({ id, onClose }: { id: string; onClose: () => void }) {
                       {d.calls.map((c) => (
                         <Tr key={c.id}>
                           <Td>
-                            {TASK_LABEL[c.kind]}
+                            {CALL_KIND_LABEL[c.kind]}
                             {!c.ok && <span className="text-danger block max-w-[180px] truncate text-xs" title={c.error ?? ''}>{c.error}</span>}
                           </Td>
                           <Td className="max-w-[200px]">
@@ -319,7 +318,7 @@ function EvaluationSheet({ id, onClose }: { id: string; onClose: () => void }) {
                           </TdNum>
                           <TdNum className="text-xs">{fmtMs(c.latencyMs)}</TdNum>
                           <TdNum className="text-xs">
-                            {fmtUsd(c.costUsd)}
+                            {fmtCost(c.costUsd)}
                             {c.costEstimated && <span className="text-muted block">estimated</span>}
                           </TdNum>
                         </Tr>

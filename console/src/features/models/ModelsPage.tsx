@@ -11,7 +11,7 @@ import { Field, Select } from '@/components/ui/input';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { DefinitionList, ErrorState, PageHeader, PageSkeleton } from '@/components/ui/page';
 import { errorMessage, get, post, put } from '@/lib/api';
-import { fmtInt, fmtMs, fmtNum, fmtPct, fmtUsd } from '@/lib/format';
+import { fmtInt, fmtMs, fmtNum, fmtPct, fmtCost } from '@/lib/format';
 import { PROVIDER_LABEL, TASK_LABEL, type KeyInfo, type MarkResponse, type Profile, type Task } from '@/lib/types';
 import { CallStrip } from '../shared/CallStrip';
 import { MarkingResultView } from '../shared/MarkingResultView';
@@ -30,7 +30,7 @@ export default function ModelsPage() {
     <>
       <PageHeader
         title="Models & providers"
-        description="Choose which model marks answers, drafts rubrics and rewrites feedback. Changes reach every server process within 10 seconds — no restart."
+        description="Choose which model marks answers and drafts rubrics. Changes reach every server process within 10 seconds — no restart."
         actions={
           <Button onClick={() => setEditing('new')}>
             <Plus /> New profile
@@ -226,7 +226,7 @@ function ProfileCard({ p, onEdit, onTest, onKey }: { p: Profile; onEdit: () => v
           <Mini label="Calls (30 d)" value={fmtInt(s.calls)} />
           <Mini label="Failed" value={s.calls ? fmtPct(s.failed / s.calls, 1) : '—'} warn={s.calls > 0 && s.failed / s.calls > 0.05} />
           <Mini label="Avg · p95 time" value={s.avgLatencyMs !== null ? `${fmtMs(s.avgLatencyMs)} · ${fmtMs(s.p95LatencyMs)}` : '—'} />
-          <Mini label="Cost (30 d)" value={fmtUsd(s.costUsd)} />
+          <Mini label="Cost (30 d)" value={fmtCost(s.costUsd)} />
         </div>
         {p.notes && <p className="text-muted text-xs whitespace-pre-line">{p.notes}</p>}
       </CardBody>
@@ -307,10 +307,10 @@ function KeyDialog({ profile, onClose }: { profile: Profile; onClose: () => void
         <DefinitionList
           items={[
             ['Key label', k.label ?? '—'],
-            ['Spent with this key', fmtUsd(k.usageUsd)],
-            ['Key spending limit', k.limitUsd === null ? 'No limit' : fmtUsd(k.limitUsd)],
-            ['Left under the limit', k.limitRemainingUsd === null ? '—' : fmtUsd(k.limitRemainingUsd)],
-            ['Account credits', k.credits ? `${fmtUsd(k.credits.totalUsd)} bought · ${fmtUsd(k.credits.usedUsd)} used · ${fmtUsd((k.credits.totalUsd ?? 0) - (k.credits.usedUsd ?? 0))} left` : 'Not available for this key'],
+            ['Spent with this key', fmtCost(k.usageUsd)],
+            ['Key spending limit', k.limitUsd === null ? 'No limit' : fmtCost(k.limitUsd)],
+            ['Left under the limit', k.limitRemainingUsd === null ? '—' : fmtCost(k.limitRemainingUsd)],
+            ['Account credits', k.credits ? `${fmtCost(k.credits.totalUsd)} bought · ${fmtCost(k.credits.usedUsd)} used · ${fmtCost((k.credits.totalUsd ?? 0) - (k.credits.usedUsd ?? 0))} left` : 'Not available for this key'],
             ['Tier', k.isFreeTier ? <Badge tone="warning">Free tier — paid models fail</Badge> : 'Paid'],
           ]}
         />

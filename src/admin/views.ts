@@ -37,6 +37,8 @@ export const clientView = (c: Client & { plan?: PricingPlan | null }) => ({
   name: c.name,
   // Never the real prefix: the console shows the first 4 characters only.
   apiKeyHint: maskSecret(c.apiKeyPrefix),
+  // Whether the console can show the key again (it is stored encrypted).
+  apiKeyStored: c.apiKeyEncrypted !== null,
   webhookUrl: c.webhookUrl,
   lastSeenAt: iso(c.lastSeenAt),
   monthlyBudgetUsd: num(c.monthlyBudgetUsd),

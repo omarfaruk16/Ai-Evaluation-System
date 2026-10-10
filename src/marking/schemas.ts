@@ -54,11 +54,6 @@ export interface MissingPoint {
   note: string;
 }
 
-export interface StudentFeedback {
-  didWell: string[];
-  toImprove: string[];
-}
-
 // ───────────────────────── LLM outputs (validated after JSON.parse) ─────────────────────────
 
 export const markingOutputSchema = z.object({
@@ -75,7 +70,6 @@ export const markingOutputSchema = z.object({
     }),
   ),
   missing: z.array(z.object({ criterion: z.string(), note: z.string() })),
-  studentFeedback: z.object({ didWell: z.array(z.string()), toImprove: z.array(z.string()) }),
   confidence: z.number(),
   flags: z.array(z.string()),
 });
@@ -94,12 +88,6 @@ export const rubricDraftOutputSchema = z.object({
   notes: z.string(),
 });
 export type RubricDraftOutput = z.infer<typeof rubricDraftOutputSchema>;
-
-export const feedbackOutputSchema = z.object({
-  didWell: z.array(z.string()),
-  toImprove: z.array(z.string()),
-});
-export type FeedbackOutput = z.infer<typeof feedbackOutputSchema>;
 
 // ───────────────────────── JSON Schemas for strict structured output ─────────────────────────
 // Strict mode needs every property listed in `required` and additionalProperties: false.
@@ -131,7 +119,6 @@ export const markingJsonSchema = obj({
     }),
   },
   missing: { type: 'array', items: obj({ criterion: str, note: str }) },
-  studentFeedback: obj({ didWell: strArr, toImprove: strArr }),
   confidence: { type: 'number' },
   flags: {
     type: 'array',
@@ -152,5 +139,3 @@ export const rubricDraftJsonSchema = obj({
   },
   notes: str,
 });
-
-export const feedbackJsonSchema = obj({ didWell: strArr, toImprove: strArr });

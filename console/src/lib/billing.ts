@@ -75,19 +75,15 @@ export interface AnswerCostInputs {
   outputTokens: number;
   /** Share of input tokens served from the provider's prompt cache (0–1). */
   cacheShare: number;
-  /** Share of answers whose marks the teacher changes, which triggers a feedback rewrite (0–1). */
-  adjustRate: number;
   /** Extra for retries and failed calls (0–1). */
   overhead: number;
 }
 
-/** Estimated USD per model-marked answer, including the feedback rewrite when a teacher adjusts marks. */
+/** Estimated USD per model-marked answer. */
 export function estimateAnswerCostUsd(i: AnswerCostInputs, prices: Prices) {
   const input = i.promptBaseTokens + i.questionTokens + i.answerWords * i.tokensPerWord;
   const marking = callCostUsd({ input, cached: input * i.cacheShare, output: i.outputTokens }, prices);
-  // A feedback rewrite sends about the same context and returns a short list.
-  const feedback = callCostUsd({ input: input + 120, cached: 0, output: 260 }, prices);
-  return { inputTokens: Math.round(input), perAnswer: (marking + feedback * i.adjustRate) * (1 + i.overhead), marking, feedback };
+  return { inputTokens: Math.round(input), perAnswer: marking * (1 + i.overhead), marking };
 }
 
 /** About 1,100 tokens in and 500 out per rubric draft, plus a retry one time in five. */

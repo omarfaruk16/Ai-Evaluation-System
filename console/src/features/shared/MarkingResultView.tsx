@@ -102,15 +102,6 @@ export function MarkingResultView({ result, answer, maxMarks }: { result: Markin
         </div>
       )}
 
-      {result.studentFeedback && (result.studentFeedback.didWell.length > 0 || result.studentFeedback.toImprove.length > 0) && (
-        <div className="rounded-lg border px-4 py-3">
-          <p className="text-muted mb-3 text-xs font-medium">Feedback the student sees after the teacher approves</p>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <PointList title="What you did well" items={result.studentFeedback.didWell} tone="success" />
-            <PointList title="How to earn the missing marks" items={result.studentFeedback.toImprove} tone="warning" />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

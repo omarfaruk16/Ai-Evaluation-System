@@ -4,15 +4,15 @@ import { PrismaModule } from './common/prisma.service';
 import { AppConfigModule, ENV } from './config/config.module';
 import type { Env } from './config/env';
 import { LlmModule } from './llm/llm.module';
-import { FeedbackService } from './marking/feedback.service';
 import { MarkingService } from './marking/marking.service';
+import { TryMarkService } from './marking/try-mark.service';
 import { RubricDraftService } from './marking/rubric-draft.service';
 import { SettingsModule } from './settings/settings.service';
 import { QueueModule } from './queue/queue.module';
 import { UsageService } from './usage/usage.service';
 import { WebhookService } from './webhooks/webhook.service';
 
-const services = [UsageService, WebhookService, MarkingService, RubricDraftService, FeedbackService];
+const services = [UsageService, WebhookService, MarkingService, RubricDraftService, TryMarkService];
 
 /** pino-pretty is a dev dependency; the production image doesn't ship it. */
 function prettyAvailable(): boolean {

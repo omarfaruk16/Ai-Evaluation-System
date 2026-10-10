@@ -9,10 +9,9 @@ import { PrismaService } from '../common/prisma.service';
 import { canonicalAnswer, isBlankAnswer, sha256 } from '../common/text';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
-import { FeedbackService } from '../marking/feedback.service';
 import { questionContentHash, rubricHash, validateRubric } from '../marking/rubric';
 import { chooseLane } from '../marking/router';
-import { rubricSchema, type StudentFeedback } from '../marking/schemas';
+import { rubricSchema } from '../marking/schemas';
 import { applyFinalCriteria, blankResult, type MarkingResult } from '../marking/scoring';
 import { QUEUE_DEFERRED, QUEUE_REALTIME, type MarkingJob } from '../queue/queue.module';
 import { UsageService } from '../usage/usage.service';
@@ -30,7 +29,6 @@ const resultData = (r: MarkingResult) => ({
   weaknesses: r.weaknesses,
   highlights: json(r.highlights),
   missing: json(r.missing),
-  studentFeedback: json(r.studentFeedback),
   confidence: r.confidence,
   flags: r.flags,
 });
@@ -65,7 +63,6 @@ export class EvaluationsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(UsageService) private readonly usage: UsageService,
     @Inject(WebhookService) private readonly webhooks: WebhookService,
-    @Inject(FeedbackService) private readonly feedback: FeedbackService,
     @Inject(ENV) private readonly env: Env,
     @InjectQueue(QUEUE_REALTIME) private readonly realtime: Queue<MarkingJob>,
     @InjectQueue(QUEUE_DEFERRED) private readonly deferred: Queue<MarkingJob>,
@@ -165,7 +162,6 @@ export class EvaluationsService {
           weaknesses: source.weaknesses,
           highlights: json(source.highlights),
           missing: json(source.missing),
-          studentFeedback: json(source.studentFeedback),
           confidence: source.confidence,
           flags: source.flags,
           model: source.model,
@@ -369,10 +365,7 @@ export class EvaluationsService {
     return toView(updated);
   }
 
-  /**
-   * Records the teacher's decision. When marks were adjusted, the student feedback is rewritten
-   * to match the final marks, so a student never sees feedback that contradicts their mark.
-   */
+  /** Records the teacher's decision. */
   async review(client: AuthenticatedClient, id: string, dto: ReviewDto) {
     const ev = await this.load(client, id);
     if (ev.status !== 'completed') {
@@ -384,14 +377,11 @@ export class EvaluationsService {
 
     let finalCriteria: { id: string; awarded: number; max: number }[] | null = null;
     let finalScore: number | null = null;
-    let finalFeedback: StudentFeedback | null = null;
-    let feedbackError: string | undefined;
 
     if (dto.decision === 'accepted') {
       const suggested = (ev.criteria as { id: string; awarded: number; max: number }[] | null) ?? [];
       finalCriteria = suggested.map((c) => ({ id: c.id, awarded: c.awarded, max: c.max }));
       finalScore = ev.suggestedScore;
-      finalFeedback = ev.studentFeedback as StudentFeedback | null;
     } else if (dto.decision === 'adjusted') {
       const unknown = (dto.finalCriteria ?? []).filter((c) => !ids.has(c.id)).map((c) => c.id);
       if (unknown.length > 0) {
@@ -400,20 +390,6 @@ export class EvaluationsService {
       const applied = applyFinalCriteria(rubric, dto.finalCriteria ?? [], question.markStep);
       finalCriteria = applied.criteria;
       finalScore = applied.total;
-      if (dto.rewriteFeedback) {
-        const r = await this.feedback.rewrite({
-          clientId: client.id,
-          evaluationId: ev.id,
-          question: question.text,
-          modelAnswer: question.modelAnswer,
-          rubric,
-          answer: ev.answerText,
-          finalCriteria,
-          teacherNote: dto.teacherNote,
-        });
-        finalFeedback = r.feedback;
-        feedbackError = r.error;
-      }
     }
 
     const updated = await this.prisma.evaluation.update({
@@ -422,10 +398,9 @@ export class EvaluationsService {
         decision: dto.decision,
         finalScore,
         finalCriteria: finalCriteria ? json(finalCriteria) : Prisma.DbNull,
-        finalFeedback: finalFeedback ? json(finalFeedback) : Prisma.DbNull,
         reviewedAt: new Date(),
       },
     });
-    return { ...toView(updated), ...(feedbackError ? { feedbackError } : {}) };
+    return toView(updated);
   }
 }

@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { computeCharges } from '@/lib/billing';
 import { errorMessage, patch, post } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtUsd } from '@/lib/format';
+import { fmtInt, fmtMoney, fmtCost } from '@/lib/format';
 import type { BillingModel, Plan } from '@/lib/types';
 import { useBillingSettings, useUnitCosts } from '../shared/queries';
 import { costBasis } from './costs';
@@ -169,7 +169,7 @@ export function PlanForm({ open, onOpenChange, plan }: { open: boolean; onOpenCh
         <aside className="bg-surface-2/60 h-fit space-y-4 rounded-xl border p-4">
           <div>
             <p className="text-sm font-semibold">Example month</p>
-            <p className="text-muted text-xs">With your {basis.measured ? 'measured' : 'estimated'} AI cost of {fmtUsd(basis.perAnswerUsd)} per answer.</p>
+            <p className="text-muted text-xs">With your {basis.measured ? 'measured' : 'estimated'} AI cost of {fmtCost(basis.perAnswerUsd)} per answer.</p>
           </div>
           <Field label="Answers marked" htmlFor="pl-vol">
             <Input id="pl-vol" type="number" min={0} step={500} value={volume} onChange={(e) => setVolume(e.target.value)} />

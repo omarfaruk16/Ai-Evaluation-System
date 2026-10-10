@@ -1,10 +1,12 @@
 import { Body, Controller, Get, HttpStatus, Inject, Injectable, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { generateApiKey, generateWebhookSecret } from '../auth/api-key';
+import { generateApiKey, generateWebhookSecret, openApiKey, sealApiKey } from '../auth/api-key';
 import { clearApiKeyCache } from '../auth/api-key.guard';
 import { AppError, notFound } from '../common/errors';
 import { PrismaService } from '../common/prisma.service';
+import { ENV } from '../config/config.module';
+import type { Env } from '../config/env';
 import { parseOrThrow } from '../common/validation';
 import { WebhookService } from '../webhooks/webhook.service';
 import { AdminGuard } from './auth/admin.guard';
@@ -52,6 +54,7 @@ export class ClientsAdminService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(BillingService) private readonly billing: BillingService,
     @Inject(WebhookService) private readonly webhooks: WebhookService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   async list() {
@@ -126,6 +129,7 @@ export class ClientsAdminService {
           name: input.name,
           apiKeyHash: key.hash,
           apiKeyPrefix: key.prefix,
+          apiKeyEncrypted: sealApiKey(key.key, this.env.SECRETS_ENCRYPTION_KEY),
           webhookSecret,
           webhookUrl: input.webhookUrl ?? null,
           planId: input.planId ?? null,
@@ -154,11 +158,27 @@ export class ClientsAdminService {
     const key = generateApiKey();
     const c = await this.prisma.client.update({
       where: { id },
-      data: { apiKeyHash: key.hash, apiKeyPrefix: key.prefix },
+      data: { apiKeyHash: key.hash, apiKeyPrefix: key.prefix, apiKeyEncrypted: sealApiKey(key.key, this.env.SECRETS_ENCRYPTION_KEY) },
       include: { plan: true },
     });
     clearApiKeyCache();
     return { client: clientView(c), apiKey: key.key };
+  }
+
+  /** The project's current API key, for an operator to copy again. */
+  async revealKey(id: string) {
+    const c = await this.find(id);
+    if (!this.env.SECRETS_ENCRYPTION_KEY) {
+      throw new AppError('conflict', 'Keys are not stored on this server (SECRETS_ENCRYPTION_KEY is not set). Rotate the key to get a new one.', HttpStatus.CONFLICT);
+    }
+    if (!c.apiKeyEncrypted) {
+      throw new AppError('conflict', 'This key was created before keys were stored. Rotate it once; from then on it can be copied here.', HttpStatus.CONFLICT);
+    }
+    const apiKey = openApiKey(c.apiKeyEncrypted, this.env.SECRETS_ENCRYPTION_KEY);
+    if (!apiKey) {
+      throw new AppError('conflict', 'The stored key can’t be decrypted (SECRETS_ENCRYPTION_KEY changed). Rotate the key to store a new one.', HttpStatus.CONFLICT);
+    }
+    return { apiKey };
   }
 
   async rotateWebhookSecret(id: string) {
@@ -227,6 +247,12 @@ export class ClientsAdminController {
   @Post(':id/rotate-key')
   rotateKey(@Param('id', new UuidPipe()) id: string) {
     return this.clients.rotateKey(id);
+  }
+
+  // POST, not GET, so the console's CSRF header is required to read a key.
+  @Post(':id/reveal-key')
+  revealKey(@Param('id', new UuidPipe()) id: string) {
+    return this.clients.revealKey(id);
   }
 
   @Post(':id/rotate-webhook-secret')

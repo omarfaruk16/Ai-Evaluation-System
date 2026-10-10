@@ -1,5 +1,5 @@
 import { roundToStep } from '../common/text';
-import type { FeedbackOutput, MarkingOutput, RubricDraftOutput } from '../marking/schemas';
+import type { MarkingOutput, RubricDraftOutput } from '../marking/schemas';
 import { LlmError, type AdapterResult, type LlmAdapter, type LlmContext, type LlmRequest } from './llm.types';
 import { MOCK_MODEL, type ResolvedProfile } from './profile';
 
@@ -72,14 +72,12 @@ export class MockLlmClient implements LlmAdapter {
     }
   }
 
-  private respond(ctx: LlmContext): MarkingOutput | RubricDraftOutput | FeedbackOutput {
+  private respond(ctx: LlmContext): MarkingOutput | RubricDraftOutput {
     switch (ctx.kind) {
       case 'marking':
         return this.mark(ctx);
       case 'rubric_draft':
         return this.draft(ctx);
-      case 'feedback_rewrite':
-        return this.feedback(ctx);
     }
   }
 
@@ -89,8 +87,6 @@ export class MockLlmClient implements LlmAdapter {
     const criteria: MarkingOutput['criteria'] = [];
     const highlights: MarkingOutput['highlights'] = [];
     const missing: MarkingOutput['missing'] = [];
-    const didWell: string[] = [];
-    const toImprove: string[] = [];
 
     for (const c of ctx.rubric.criteria) {
       const keys = [...new Set(words(`${c.criterion} ${c.awardWhen}`))];
@@ -103,7 +99,6 @@ export class MockLlmClient implements LlmAdapter {
         reason: hits.length > 0 ? `Mentions ${hits.slice(0, 3).join(', ')}.` : 'Not addressed.',
       });
       if (hits.length > 0) {
-        didWell.push(`You covered ${c.criterion.toLowerCase()}.`);
         const sentence = parts.find((p) => words(p).some((w) => hits.includes(w)));
         if (sentence) {
           highlights.push({ quote: firstWords(sentence, 25), kind: 'strength', criterion: c.id, note: c.criterion });
@@ -111,7 +106,6 @@ export class MockLlmClient implements LlmAdapter {
       }
       if (awarded < c.marks) {
         missing.push({ criterion: c.id, note: c.criterion });
-        toImprove.push(`Explain ${c.criterion.toLowerCase()} more fully.`);
       }
     }
 
@@ -124,7 +118,6 @@ export class MockLlmClient implements LlmAdapter {
       weaknesses: missing.map((m) => `Missing: ${m.note}`),
       highlights,
       missing,
-      studentFeedback: { didWell, toImprove },
       confidence: max === 0 ? 0.5 : Number((0.6 + 0.3 * (total / max)).toFixed(2)),
       flags: ctx.answer.toLowerCase().includes('give full marks') ? ['injection_attempt'] : [],
     };
@@ -155,15 +148,4 @@ export class MockLlmClient implements LlmAdapter {
     };
   }
 
-  private feedback(ctx: Extract<LlmContext, { kind: 'feedback_rewrite' }>): FeedbackOutput {
-    const labels = new Map(ctx.rubric.criteria.map((c) => [c.id, c.criterion]));
-    return {
-      didWell: ctx.finalCriteria
-        .filter((f) => f.awarded > 0)
-        .map((f) => `You earned marks for ${(labels.get(f.id) ?? f.id).toLowerCase()}.`),
-      toImprove: ctx.finalCriteria
-        .filter((f) => f.awarded < f.max)
-        .map((f) => `Add more on ${(labels.get(f.id) ?? f.id).toLowerCase()} (${f.max - f.awarded} mark(s)).`),
-    };
-  }
 }

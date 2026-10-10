@@ -7,9 +7,11 @@ import type { Env } from '../config/env';
 import { SettingsService } from '../settings/settings.service';
 import { envProfile, fromRow, toRowData, type ResolvedProfile } from './profile';
 
-export const LLM_TASKS: readonly LlmCallKind[] = ['marking', 'rubric_draft', 'feedback_rewrite'];
+/** Tasks a model profile can be assigned to. Old usage rows may still carry the retired 'feedback_rewrite' kind. */
+export type LlmTask = Exclude<LlmCallKind, 'feedback_rewrite'>;
+export const LLM_TASKS: readonly LlmTask[] = ['marking', 'rubric_draft'];
 export const ASSIGNMENTS_KEY = 'llm.assignments';
-export type Assignments = Partial<Record<LlmCallKind, string>>;
+export type Assignments = Partial<Record<LlmTask, string>>;
 
 /** How long a process keeps resolved profiles; console changes reach every process within this. */
 const CACHE_MS = 10_000;
@@ -22,7 +24,7 @@ const CACHE_MS = 10_000;
 export class ProfileService implements OnModuleInit {
   private readonly logger = new Logger(ProfileService.name);
   private readonly fallback: ResolvedProfile;
-  private cache: { at: number; byKind: Record<LlmCallKind, ResolvedProfile> } | null = null;
+  private cache: { at: number; byKind: Record<LlmTask, ResolvedProfile> } | null = null;
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -56,7 +58,7 @@ export class ProfileService implements OnModuleInit {
     this.invalidate();
   }
 
-  async forKind(kind: LlmCallKind): Promise<ResolvedProfile> {
+  async forKind(kind: LlmTask): Promise<ResolvedProfile> {
     return (await this.load())[kind];
   }
 
@@ -67,7 +69,7 @@ export class ProfileService implements OnModuleInit {
   }
 
   /** Last resolved profile for a task, without a database read (health checks, labels). */
-  current(kind: LlmCallKind): ResolvedProfile {
+  current(kind: LlmTask): ResolvedProfile {
     return this.cache?.byKind[kind] ?? this.fallback;
   }
 
@@ -79,7 +81,7 @@ export class ProfileService implements OnModuleInit {
     this.cache = null;
   }
 
-  private async load(): Promise<Record<LlmCallKind, ResolvedProfile>> {
+  private async load(): Promise<Record<LlmTask, ResolvedProfile>> {
     if (this.cache && Date.now() - this.cache.at < CACHE_MS) return this.cache.byKind;
     const assigned = await this.assignments();
     const ids = [...new Set(Object.values(assigned).filter((v): v is string => typeof v === 'string'))];
@@ -87,7 +89,7 @@ export class ProfileService implements OnModuleInit {
     const byId = new Map(rows.map((r) => [r.id, fromRow(r)]));
     const byKind = Object.fromEntries(
       LLM_TASKS.map((t) => [t, byId.get(assigned[t] ?? '') ?? this.fallback]),
-    ) as Record<LlmCallKind, ResolvedProfile>;
+    ) as Record<LlmTask, ResolvedProfile>;
     this.cache = { at: Date.now(), byKind };
     return byKind;
   }

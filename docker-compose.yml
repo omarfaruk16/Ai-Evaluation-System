@@ -36,6 +36,34 @@ services:
       timeout: 3s
       retries: 20
 
+  # The service itself, built from the Dockerfile, with the console at http://localhost:4200/console.
+  #   docker compose --profile app up -d --build
+  # Put OPENROUTER_API_KEY and LLM_PROVIDER=openrouter in .env for real marking; otherwise the free mock model is used.
+  api:
+    build: .
+    image: ai-marking-service:local
+    container_name: ams_dev_api
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    env_file: [{ path: .env, required: false }]
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 4200
+      DATABASE_URL: postgresql://ams:ams_dev_password@postgres:5432/ams_dev?schema=public
+      REDIS_URL: redis://redis:6379
+      RUN_EMBEDDED_WORKERS: 'true'
+      ADMIN_COOKIE_SECURE: 'false'
+      PUBLIC_URL: http://localhost:4200
+    command: ['sh', '-c', 'node_modules/.bin/prisma migrate deploy && node dist/main.js']
+    ports:
+      - '4200:4200'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    profiles: ['app']
+
 volumes:
   pgdata:
   redisdata:

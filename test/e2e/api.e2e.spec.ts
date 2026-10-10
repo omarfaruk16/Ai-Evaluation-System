@@ -158,6 +158,44 @@ describe('rubric drafts', () => {
   });
 });
 
+describe('trying a rubric', () => {
+  const body = {
+    question: question.text,
+    modelAnswer: question.modelAnswer,
+    maxMarks: 6,
+    markStep: 0.5,
+    rubric,
+  };
+
+  it('marks one answer straight away without storing it or revealing the model', async () => {
+    const before = await prisma.evaluation.count();
+    const res = await request(http).post('/v1/evaluations/try').set(auth()).send({ ...body, answer: GOOD });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.result.criteria).toHaveLength(4);
+    expect(res.body.result.suggestedScore).toBeGreaterThan(0);
+    expect(res.body).not.toHaveProperty('model');
+    expect(res.body).not.toHaveProperty('usage');
+    expect(await prisma.evaluation.count()).toBe(before);
+  });
+
+  it('scores a blank answer 0 without calling the model', async () => {
+    const res = await request(http).post('/v1/evaluations/try').set(auth()).send({ ...body, answer: '  ' });
+    expect(res.status).toBe(200);
+    expect(res.body.result.suggestedScore).toBe(0);
+    expect(res.body.note).toMatch(/blank/i);
+  });
+
+  it('rejects a rubric that does not add up', async () => {
+    const res = await request(http)
+      .post('/v1/evaluations/try')
+      .set(auth())
+      .send({ ...body, maxMarks: 7, answer: GOOD });
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('invalid_rubric');
+  });
+});
+
 describe('marking pipeline', () => {
   const ids: Record<string, string> = {};
 
@@ -198,9 +236,9 @@ describe('marking pipeline', () => {
     expect(good.criteria.map((c: { awarded: number }) => c.awarded)).toEqual([2, 1, 0.5, 0]);
     expect(good.highlights.length).toBeGreaterThan(0);
     for (const h of good.highlights) expect(good.answerText.slice(h.start, h.end)).toBe(h.quote);
-    expect(good.studentFeedback.didWell.length).toBeGreaterThan(0);
+    expect(good).not.toHaveProperty('studentFeedback');
     expect(good.model).toBe('mock/keyword-overlap');
-    expect(good.promptVersion).toBe('mark-v1');
+    expect(good.promptVersion).toBe('mark-v2');
 
     const blank = await getEval(ids.a2!);
     expect(blank).toMatchObject({ suggestedScore: 0, flags: ['blank'] });
@@ -284,10 +322,10 @@ describe('marking pipeline', () => {
     const res = await request(http).post(`/v1/evaluations/${ids.a1}/review`).set(auth()).send({ decision: 'accepted' });
     expect(res.status).toBe(200);
     expect(res.body.review).toMatchObject({ decision: 'accepted', finalScore: 3.5 });
-    expect(res.body.review.finalFeedback).toEqual(res.body.studentFeedback);
+    expect(res.body.review).not.toHaveProperty('finalFeedback');
   });
 
-  it('rewrites student feedback when the teacher adjusts the marks', async () => {
+  it('records adjusted marks without another AI call', async () => {
     const res = await request(http)
       .post(`/v1/evaluations/${ids.a5}/review`)
       .set(auth())
@@ -302,7 +340,8 @@ describe('marking pipeline', () => {
       });
     expect(res.status).toBe(200);
     expect(res.body.review.finalScore).toBe(5);
-    expect(res.body.review.finalFeedback.toImprove).toEqual([expect.stringContaining('flow control')]);
+    expect(res.body.review.finalCriteria.map((c: { awarded: number }) => c.awarded)).toEqual([2, 2, 1, 0]);
+    expect(await prisma.llmCall.count({ where: { evaluationId: ids.a5!, kind: 'feedback_rewrite' } })).toBe(0);
     const bad = await request(http)
       .post(`/v1/evaluations/${ids.a5}/review`)
       .set(auth())

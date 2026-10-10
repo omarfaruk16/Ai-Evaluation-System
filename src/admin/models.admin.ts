@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpStatus, Inject, Injectable, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
-import { Prisma, type LlmCallKind, type ModelProfile } from '@prisma/client';
+import { Prisma, type ModelProfile } from '@prisma/client';
 import { z } from 'zod';
 import { AppError, notFound } from '../common/errors';
 import { maskSecret } from '../common/mask';
@@ -15,7 +15,7 @@ import {
   REASONING_LEVELS,
   routingSchema,
 } from '../llm/profile';
-import { ASSIGNMENTS_KEY, LLM_TASKS, ProfileService, type Assignments } from '../llm/profile.service';
+import { ASSIGNMENTS_KEY, LLM_TASKS, ProfileService, type Assignments, type LlmTask } from '../llm/profile.service';
 import { SettingsService } from '../settings/settings.service';
 import { AdminGuard } from './auth/admin.guard';
 import { UuidPipe } from './http';
@@ -66,7 +66,7 @@ const profileSchema = z
 type ProfileInput = z.infer<typeof profileSchema>;
 
 const assignmentsSchema = z.object(
-  Object.fromEntries(LLM_TASKS.map((t) => [t, z.string().uuid()])) as Record<LlmCallKind, z.ZodString>,
+  Object.fromEntries(LLM_TASKS.map((t) => [t, z.string().uuid()])) as Record<LlmTask, z.ZodString>,
 );
 
 function rowData(p: ProfileInput) {
@@ -183,7 +183,7 @@ export class ModelsAdminService {
     return profileView(row);
   }
 
-  async setAssignments(input: Record<LlmCallKind, string>) {
+  async setAssignments(input: Record<LlmTask, string>) {
     const ids = [...new Set(Object.values(input))];
     const rows = await this.prisma.modelProfile.findMany({ where: { id: { in: ids } } });
     const byId = new Map(rows.map((r) => [r.id, r]));
@@ -253,7 +253,7 @@ export class ModelsAdminController {
 
   @Put('assignments')
   assignments(@Body() body: unknown) {
-    return this.models.setAssignments(parseOrThrow(assignmentsSchema, body) as Record<LlmCallKind, string>);
+    return this.models.setAssignments(parseOrThrow(assignmentsSchema, body) as Record<LlmTask, string>);
   }
 
   /** OpenRouter catalogue search (public, cached for an hour). */

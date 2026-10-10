@@ -105,7 +105,7 @@ describe('model profiles', () => {
     expect(res.status).toBe(200);
     expect(res.body.profiles).toHaveLength(1);
     const id = res.body.profiles[0].id;
-    expect(res.body.assignments).toEqual({ marking: id, rubric_draft: id, feedback_rewrite: id });
+    expect(res.body.assignments).toEqual({ marking: id, rubric_draft: id });
   });
 
   it('only accepts *_API_KEY variables for keys', async () => {
@@ -125,7 +125,7 @@ describe('model profiles', () => {
     mockB = created.body.id;
     const list = await agent.get('/admin-api/models');
     const first = list.body.profiles.find((p: { name: string }) => p.name !== 'Mock B').id;
-    const assigned = await agent.put('/admin-api/models/assignments').set(CSRF).send({ marking: mockB, rubric_draft: first, feedback_rewrite: first });
+    const assigned = await agent.put('/admin-api/models/assignments').set(CSRF).send({ marking: mockB, rubric_draft: first });
     expect(assigned.status).toBe(200);
     expect(assigned.body.marking).toBe(mockB);
     expect((await agent.post(`/admin-api/models/${mockB}/archive`).set(CSRF)).status).toBe(409);

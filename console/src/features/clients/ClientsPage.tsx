@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { get } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtRelative, fmtUsd } from '@/lib/format';
+import { fmtInt, fmtMoney, fmtRelative, fmtCost } from '@/lib/format';
 import type { Client } from '@/lib/types';
 import { ClientForm, type CreatedClient } from './ClientForm';
 import { SecretsDialog } from './SecretsDialog';
@@ -75,7 +75,7 @@ export default function ClientsPage() {
                   </Td>
                   <Td className="text-muted text-[13px] whitespace-nowrap">{c.lastSeenAt ? fmtRelative(c.lastSeenAt) : 'Never'}</Td>
                   <TdNum>{fmtInt(c.month?.answers)}</TdNum>
-                  <TdNum>{fmtUsd(c.month?.costUsd)}</TdNum>
+                  <TdNum>{fmtCost(c.month?.costUsd)}</TdNum>
                   <TdNum>{c.plan && c.month?.revenue !== null && c.month?.revenue !== undefined ? fmtMoney(c.month.revenue, c.plan.currency) : '—'}</TdNum>
                   <Td>{c.webhookUrl ? <Badge tone="success">Registered</Badge> : <Badge>Not yet</Badge>}</Td>
                 </Tr>

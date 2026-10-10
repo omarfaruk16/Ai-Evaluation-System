@@ -1,6 +1,8 @@
 // Response shapes of /admin-api. Kept by hand next to the server's view functions (src/admin/views.ts).
 
-export type Task = 'marking' | 'rubric_draft' | 'feedback_rewrite';
+export type Task = 'marking' | 'rubric_draft';
+/** Kinds on recorded AI calls; 'feedback_rewrite' only appears on old rows. */
+export type CallKind = Task | 'feedback_rewrite';
 export type Provider = 'openrouter' | 'openai_compatible' | 'mock';
 export type EvalStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type Lane = 'realtime' | 'deferred';
@@ -121,6 +123,7 @@ export interface Client {
   name: string;
   /** First 4 characters of the key, the rest masked. */
   apiKeyHint: string | null;
+  apiKeyStored: boolean;
   webhookUrl: string | null;
   lastSeenAt: string | null;
   monthlyBudgetUsd: number | null;
@@ -285,7 +288,7 @@ export interface Overview {
     meanAbsDiffShare: number | null;
   };
   daily: { day: string; completed: number; failed: number; costUsd: number; calls: number }[];
-  byKind: { kind: Task; origin: 'client' | 'console'; calls: number; costUsd: number; inputTokens: number; outputTokens: number; cachedTokens: number }[];
+  byKind: { kind: CallKind; origin: 'client' | 'console'; calls: number; costUsd: number; inputTokens: number; outputTokens: number; cachedTokens: number }[];
   byModel: { model: string; host: string | null; calls: number; failed: number; costUsd: number; avgLatencyMs: number | null }[];
   byClient: { clientId: string; name: string; completed: number; costUsd: number }[];
   inFlight: { status: EvalStatus; lane: Lane; count: number }[];
@@ -337,7 +340,6 @@ export interface MarkingResult {
   weaknesses: string[];
   highlights: Highlight[];
   missing: { criterionId: string | null; note: string }[];
-  studentFeedback: { didWell: string[]; toImprove: string[] } | null;
   confidence: number | null;
   flags: string[];
 }
@@ -373,7 +375,7 @@ export interface Paged<T> {
 
 export interface LlmCall {
   id: string;
-  kind: Task;
+  kind: CallKind;
   origin: 'client' | 'console';
   model: string;
   host: string | null;
@@ -410,7 +412,6 @@ export interface EvaluationDetail {
       decision: Decision;
       finalScore: number | null;
       finalCriteria: { id: string; awarded: number; max: number }[] | null;
-      finalFeedback: { didWell: string[]; toImprove: string[] } | null;
       reviewedAt: string | null;
     } | null;
     createdAt: string;
@@ -509,7 +510,11 @@ export interface Session {
 export const TASK_LABEL: Record<Task, string> = {
   marking: 'Marking',
   rubric_draft: 'Rubric drafts',
-  feedback_rewrite: 'Feedback rewrites',
+};
+
+export const CALL_KIND_LABEL: Record<CallKind, string> = {
+  ...TASK_LABEL,
+  feedback_rewrite: 'Feedback rewrites (retired)',
 };
 
 export const PROVIDER_LABEL: Record<Provider, string> = {

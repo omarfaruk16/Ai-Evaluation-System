@@ -25,15 +25,49 @@ export function fmtMoney(n: number | null | undefined, currency: string, opts: {
   }
 }
 
-/** AI costs are tiny: show enough significant digits ($0.000759, $0.0123, $12.40). */
-export function fmtUsd(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-  const abs = Math.abs(n);
-  if (abs === 0) return '$0.00';
-  if (abs >= 1) return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (abs >= 0.01) return `$${n.toFixed(4)}`;
-  return `$${n.toPrecision(3)}`;
+function symbolFor(currency: string): string {
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value ?? `${currency} `;
+  } catch {
+    return `${currency} `;
+  }
 }
+
+/** AI costs are tiny: show enough significant digits (৳0.0926, ৳1.50, $0.000759). */
+function fmtSmallMoney(n: number | null | undefined, currency: string): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  const sym = symbolFor(currency);
+  const abs = Math.abs(n);
+  if (abs === 0) return `${sym}0.00`;
+  if (abs >= 1) return `${sym}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (abs >= 0.01) return `${sym}${n.toFixed(4)}`;
+  return `${sym}${n.toPrecision(3)}`;
+}
+
+/** An amount in US dollars, as dollars (provider prices, invoice records). */
+export const fmtUsd = (n: number | null | undefined) => fmtSmallMoney(n, 'USD');
+
+// AI costs are recorded in USD. The console shows them in the default billing currency
+// (Settings → Currency) at its exchange rate; AppShell sets this once billing settings load.
+let costCurrency = { code: 'USD', rate: 1 };
+
+export function setCostCurrency(code: string | undefined, rate: number | undefined): void {
+  costCurrency = code && rate && rate > 0 ? { code, rate } : { code: 'USD', rate: 1 };
+}
+
+export const costCurrencyCode = () => costCurrency.code;
+export const costCurrencySymbol = () => symbolFor(costCurrency.code).trim();
+
+/** A USD amount converted to the display currency (for charts). */
+export const toCost = (usd: number) => usd * costCurrency.rate;
+
+/** A USD cost shown in the display currency, e.g. $0.0012 → ৳0.146 at 122 BDT per USD. */
+export const fmtCost = (usd: number | null | undefined) =>
+  fmtSmallMoney(usd === null || usd === undefined ? usd : usd * costCurrency.rate, costCurrency.code);
+
+/** The USD figure behind a converted cost, as a secondary label; null when already showing USD. */
+export const usdNote = (usd: number | null | undefined) => (costCurrency.code === 'USD' ? null : fmtUsd(usd));
 
 export const fmtPct = (n: number | null | undefined, digits = 1) =>
   n === null || n === undefined || !Number.isFinite(n) ? '—' : `${(n * 100).toFixed(digits)}%`;

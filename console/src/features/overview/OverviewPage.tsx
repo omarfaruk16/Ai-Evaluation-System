@@ -8,8 +8,8 @@ import { Segmented } from '@/components/ui/controls';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton, Stat } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { get } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtMonth, fmtMs, fmtNum, fmtPct, fmtUsd } from '@/lib/format';
-import { PROVIDER_LABEL, TASK_LABEL, type Overview, type Task } from '@/lib/types';
+import { costCurrencyCode, costCurrencySymbol, fmtCost, fmtInt, fmtMoney, fmtMonth, fmtMs, fmtNum, fmtPct, toCost, usdNote } from '@/lib/format';
+import { CALL_KIND_LABEL, PROVIDER_LABEL, TASK_LABEL, type Overview, type Task } from '@/lib/types';
 import { BarsChart, ChartFrame } from '../shared/charts';
 
 const RANGES = ['7', '14', '30', '90'] as const;
@@ -54,11 +54,11 @@ function Body({ o }: { o: Overview }) {
         <Stat
           label="AI cost"
           icon={<Coins />}
-          value={fmtUsd(t.costUsd)}
+          value={fmtCost(t.costUsd)}
           sub={
             <>
-              {aiMarked > 0 ? `${fmtUsd(t.costUsd / aiMarked)} per model-marked answer` : 'No model-marked answers yet'}
-              {o.month.fxRates.BDT ? ` · ≈ ${fmtMoney(t.costUsd * o.month.fxRates.BDT, 'BDT')}` : ''}
+              {aiMarked > 0 ? `${fmtCost(t.costUsd / aiMarked)} per model-marked answer` : 'No model-marked answers yet'}
+              {usdNote(t.costUsd) ? ` · ${usdNote(t.costUsd)}` : ''}
             </>
           }
         />
@@ -108,13 +108,16 @@ function Body({ o }: { o: Overview }) {
         </Card>
         <Card>
           <CardBody>
-            <ChartFrame title="AI cost per day (USD)" value={`${fmtUsd(t.costUsd)} total`}>
+            <ChartFrame title={`AI cost per day (${costCurrencyCode()})`} value={`${fmtCost(t.costUsd)} total`}>
               <BarsChart
-                data={o.daily}
+                data={o.daily.map((d) => ({ ...d, cost: toCost(d.costUsd) }))}
                 x="day"
-                series={[{ key: 'costUsd', label: 'Cost', format: fmtUsd }]}
+                series={[{ key: 'cost', label: 'Cost', format: (v) => fmtCost(v / toCost(1)) }]}
                 xFormat={dayLabel}
-                yFormat={(v) => (v === 0 ? '$0' : v < 0.01 ? `$${Number(v.toPrecision(2))}` : `$${fmtNum(v, 2)}`)}
+                yFormat={(v) => {
+                  const sym = costCurrencySymbol();
+                  return v === 0 ? `${sym}0` : v < 0.01 ? `${sym}${Number(v.toPrecision(2))}` : `${sym}${fmtNum(v, 2)}`;
+                }}
               />
             </ChartFrame>
           </CardBody>
@@ -171,7 +174,7 @@ function Body({ o }: { o: Overview }) {
                 </span>
               }
             />
-            <Row label="Playground spend this month" value={fmtUsd(o.month.consoleCostUsd)} />
+            <Row label="Playground spend this month" value={fmtCost(o.month.consoleCostUsd)} />
           </CardBody>
         </Card>
       </div>
@@ -198,7 +201,7 @@ function Body({ o }: { o: Overview }) {
                   .sort((a, b) => b.costUsd - a.costUsd)
                   .map((k) => (
                     <Tr key={`${k.kind}-${k.origin}`}>
-                      <Td>{TASK_LABEL[k.kind]}</Td>
+                      <Td>{CALL_KIND_LABEL[k.kind]}</Td>
                       <Td>
                         <Badge tone={k.origin === 'console' ? 'neutral' : 'primary'}>{k.origin === 'console' ? 'Playground' : 'Projects'}</Badge>
                       </Td>
@@ -206,7 +209,7 @@ function Body({ o }: { o: Overview }) {
                       <TdNum className="text-muted">
                         {fmtInt(k.inputTokens)} / {fmtInt(k.outputTokens)}
                       </TdNum>
-                      <TdNum className="font-medium">{fmtUsd(k.costUsd)}</TdNum>
+                      <TdNum className="font-medium">{fmtCost(k.costUsd)}</TdNum>
                     </Tr>
                   ))}
               </tbody>
@@ -238,7 +241,7 @@ function Body({ o }: { o: Overview }) {
                     <TdNum>{fmtInt(m.calls)}</TdNum>
                     <TdNum className={m.failed ? 'text-danger' : 'text-muted'}>{fmtPct(m.calls ? m.failed / m.calls : 0, 1)}</TdNum>
                     <TdNum className="text-muted">{fmtMs(m.avgLatencyMs)}</TdNum>
-                    <TdNum className="font-medium">{fmtUsd(m.costUsd)}</TdNum>
+                    <TdNum className="font-medium">{fmtCost(m.costUsd)}</TdNum>
                   </Tr>
                 ))}
               </tbody>
@@ -278,8 +281,8 @@ function Body({ o }: { o: Overview }) {
                     </Link>
                   </Td>
                   <TdNum>{fmtInt(c.completed)}</TdNum>
-                  <TdNum>{fmtUsd(c.costUsd)}</TdNum>
-                  <TdNum className="text-muted">{c.completed ? fmtUsd(c.costUsd / c.completed) : '—'}</TdNum>
+                  <TdNum>{fmtCost(c.costUsd)}</TdNum>
+                  <TdNum className="text-muted">{c.completed ? fmtCost(c.costUsd / c.completed) : '—'}</TdNum>
                 </Tr>
               ))}
             </tbody>

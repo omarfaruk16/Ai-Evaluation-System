@@ -1,6 +1,6 @@
-import type { LlmCallKind } from '@prisma/client';
 import type { Rubric } from '../marking/schemas';
 import type { ResolvedProfile } from './profile';
+import type { LlmTask } from './profile.service';
 
 /** Structured inputs alongside the prompt text. Real models read the prompt; the mock reads these. */
 export type LlmContext =
@@ -11,15 +11,10 @@ export type LlmContext =
       maxMarks: number;
       markStep: number;
       maxCriteria: number;
-    }
-  | {
-      kind: 'feedback_rewrite';
-      rubric: Rubric;
-      finalCriteria: { id: string; awarded: number; max: number }[];
     };
 
 export interface LlmRequest {
-  kind: LlmCallKind;
+  kind: LlmTask;
   /** Use this model profile instead of the one assigned to `kind` (console playground and tests). */
   profileId?: string;
   system: string;

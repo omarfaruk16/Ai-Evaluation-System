@@ -3,7 +3,8 @@ import { ApiKeyGuard, CurrentClient, type AuthenticatedClient } from '../auth/ap
 import { parseOrThrow } from '../common/validation';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
-import { listEvaluationsSchema, reviewSchema, submitEvaluationsSchema } from './evaluations.dto';
+import { TryMarkService } from '../marking/try-mark.service';
+import { listEvaluationsSchema, reviewSchema, submitEvaluationsSchema, tryMarkSchema } from './evaluations.dto';
 import { EvaluationsService } from './evaluations.service';
 
 @Controller('v1')
@@ -13,6 +14,7 @@ export class EvaluationsController {
 
   constructor(
     @Inject(EvaluationsService) private readonly evaluations: EvaluationsService,
+    @Inject(TryMarkService) private readonly tryMark: TryMarkService,
     @Inject(ENV) env: Env,
   ) {
     this.submitSchema = submitEvaluationsSchema(env);
@@ -23,6 +25,26 @@ export class EvaluationsController {
   @HttpCode(202)
   submit(@CurrentClient() client: AuthenticatedClient, @Body() body: unknown) {
     return this.evaluations.submit(client, parseOrThrow(this.submitSchema, body));
+  }
+
+  /**
+   * Synchronous: marks one sample answer against a rubric and returns the result (a few seconds).
+   * Nothing is stored, so teachers can check a rubric before an exam uses it.
+   */
+  @Post('evaluations/try')
+  @HttpCode(200)
+  async try(@CurrentClient() client: AuthenticatedClient, @Body() body: unknown) {
+    const r = await this.tryMark.mark(client, parseOrThrow(tryMarkSchema, body));
+    // Model, host, usage and cost stay internal (projects don't see the provider or our margin).
+    return {
+      ok: r.ok,
+      answer: r.answer,
+      maxMarks: r.maxMarks,
+      result: 'result' in r ? r.result : null,
+      note: 'note' in r ? r.note : null,
+      error: 'error' in r ? r.error : null,
+      latencyMs: 'latencyMs' in r ? r.latencyMs : null,
+    };
   }
 
   @Get('evaluations')
@@ -41,7 +63,7 @@ export class EvaluationsController {
     return this.evaluations.rerun(client, id);
   }
 
-  /** Report the teacher's decision; rewrites student feedback when marks were adjusted. */
+  /** Report the teacher's decision (accepted, adjusted marks or rejected). */
   @Post('evaluations/:id/review')
   @HttpCode(200)
   review(@CurrentClient() client: AuthenticatedClient, @Param('id') id: string, @Body() body: unknown) {

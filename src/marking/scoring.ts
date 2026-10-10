@@ -8,7 +8,6 @@ import {
   type MissingPoint,
   type Rubric,
   type ScoredCriterion,
-  type StudentFeedback,
 } from './schemas';
 
 export interface MarkingResult {
@@ -19,7 +18,6 @@ export interface MarkingResult {
   weaknesses: string[];
   highlights: Highlight[];
   missing: MissingPoint[];
-  studentFeedback: StudentFeedback;
   confidence: number;
   flags: Flag[];
 }
@@ -94,10 +92,6 @@ export function buildMarkingResult(input: {
         criterionId: ids.has(m.criterion) ? m.criterion : null,
         note: m.note.trim().slice(0, 300),
       })),
-    studentFeedback: {
-      didWell: cleanList(output.studentFeedback.didWell, 6, 400),
-      toImprove: cleanList(output.studentFeedback.toImprove, 8, 400),
-    },
     confidence: Number(confidence.toFixed(3)),
     flags: [...flags],
   };
@@ -119,7 +113,6 @@ export function blankResult(rubric: Rubric): MarkingResult {
     weaknesses: [],
     highlights: [],
     missing: rubric.criteria.map((c) => ({ criterionId: c.id, note: c.criterion })),
-    studentFeedback: { didWell: [], toImprove: ['No answer was submitted for this question.'] },
     confidence: 1,
     flags: ['blank'],
   };

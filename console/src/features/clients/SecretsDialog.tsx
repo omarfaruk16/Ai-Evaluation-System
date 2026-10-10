@@ -32,13 +32,15 @@ export function SecretsDialog({
   const envShown = env.map(([k, v]) => `${k}=${k === 'AI_MARKING_URL' ? v : maskSecret(v)}`).join('\n');
 
   return (
-    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={title} size="lg" footer={<Button onClick={onClose}>Done — I’ve copied it</Button>}>
+    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={title} size="lg" footer={<Button onClick={onClose}>Done</Button>}>
       <div className="space-y-5">
         <div className="border-warning/30 bg-warning-soft flex gap-3 rounded-lg border px-4 py-3 text-[13px]">
           <ShieldAlert className="text-warning mt-0.5 size-4 shrink-0" />
           <p>
-            Copy {apiKey ? 'the API key' : 'the secret'} now — this is the only time it can be copied. It is masked on screen; the Copy button copies the
-            full value. Give it to the project’s administrator privately (not by public chat or email in plain text).
+            {apiKey
+              ? 'The key is masked on screen; Copy copies the full value. You can copy it again later from the project page (Connection → Get key).'
+              : 'Copy the secret now — this is the only time it can be copied. It is masked on screen; Copy copies the full value.'}{' '}
+            Give it to the project’s administrator privately (not by public chat or email in plain text).
           </p>
         </div>
 

@@ -1,10 +1,10 @@
 import '../config/load-env';
 import { PrismaClient } from '@prisma/client';
 import { parseArgs } from 'node:util';
-import { generateApiKey, generateWebhookSecret } from '../auth/api-key';
+import { generateApiKey, generateWebhookSecret, sealApiKey } from '../auth/api-key';
 
 // Registers a project that will call this service and prints its API key and webhook secret.
-// Both are shown once; only a hash of the API key is stored.
+// The key is also stored encrypted when SECRETS_ENCRYPTION_KEY is set, so the console can show it again.
 //
 //   dev:        pnpm client:create --name exam-system --webhook-url https://… --budget 50
 //   production: docker compose … exec api node dist/cli/create-client.js --name exam-system …
@@ -37,6 +37,7 @@ async function main(): Promise<void> {
         name,
         apiKeyHash: hash,
         apiKeyPrefix: prefix,
+        apiKeyEncrypted: sealApiKey(key, process.env.SECRETS_ENCRYPTION_KEY),
         webhookUrl: values['webhook-url'] ?? null,
         webhookSecret,
         monthlyBudgetUsd: budget,

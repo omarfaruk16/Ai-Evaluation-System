@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { errorMessage, patch, post } from '@/lib/api';
+import { costCurrencyCode, fmtCost } from '@/lib/format';
 import type { Client } from '@/lib/types';
 import { usePlans } from '../shared/queries';
 
@@ -104,7 +105,7 @@ export function ClientForm({
             ))}
           </Select>
         </Field>
-        <Field label="Monthly AI cost cap (USD)" htmlFor="c-budget" hint="Marking pauses for this project when its AI cost reaches this. The project only sees “usage limit reached”, never the amount. Empty = no cap.">
+        <Field label="Monthly AI cost cap (USD)" htmlFor="c-budget" hint={`${form.monthlyBudgetUsd.trim() !== '' && costCurrencyCode() !== 'USD' ? `≈ ${fmtCost(Number(form.monthlyBudgetUsd))} per month. ` : ''}Marking pauses for this project when its AI cost reaches this. The project only sees “usage limit reached”, never the amount. Empty = no cap.`}>
           <Input id="c-budget" type="number" min={0} step="0.01" value={form.monthlyBudgetUsd} onChange={set('monthlyBudgetUsd')} prefix="$" />
         </Field>
         <Field label="Billing contact" htmlFor="c-contact">

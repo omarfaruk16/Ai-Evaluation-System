@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/controls';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { EmptyState, ErrorState, PageHeader } from '@/components/ui/page';
 import { errorMessage, get, post } from '@/lib/api';
-import { fmtNum, fmtUsd } from '@/lib/format';
+import { fmtNum, fmtCost } from '@/lib/format';
 import type { Criterion, DraftResponse, MarkResponse } from '@/lib/types';
 import { CallStrip } from '../shared/CallStrip';
 import { MarkingResultView } from '../shared/MarkingResultView';
@@ -29,7 +29,8 @@ const newCriterion = (n: number): Criterion & { key: number } => ({ key: nextId+
 export default function PlaygroundPage() {
   const models = useModels();
   const sample = useQuery({ queryKey: ['playground', 'sample'], queryFn: ({ signal }) => get<Sample>('/playground/sample', signal), staleTime: Infinity });
-  const [profileId, setProfileId] = useState('');
+  // null = not chosen yet: the profile assigned to marking (the live OpenRouter model) is preselected.
+  const [chosenProfileId, setProfileId] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [modelAnswer, setModelAnswer] = useState('');
   const [maxMarks, setMaxMarks] = useState('6');
@@ -47,6 +48,10 @@ export default function PlaygroundPage() {
     setCriteria(s.rubric.criteria.map((c) => ({ ...c, key: nextId++ })));
     setAnswer(s.answer);
   };
+
+  const profiles = (models.data?.profiles ?? []).filter((p) => !p.archived);
+  const markingId = models.data?.assignments.marking;
+  const profileId = chosenProfileId ?? markingId ?? '';
 
   const total = criteria.reduce((s, c) => s + (Number(c.marks) || 0), 0);
   const rubricOk = criteria.length > 0 && criteria.every((c) => c.criterion.trim()) && Math.abs(total - Number(maxMarks)) < 1e-6;
@@ -77,14 +82,12 @@ export default function PlaygroundPage() {
     onSuccess: (r) => {
       if (r.ok) {
         setCriteria(r.rubric.criteria.map((c) => ({ ...c, key: nextId++ })));
-        toast.success(`Rubric drafted in ${(r.latencyMs / 1000).toFixed(1)} s for ${fmtUsd(r.usage.costUsd)}`);
+        toast.success(`Rubric drafted in ${(r.latencyMs / 1000).toFixed(1)} s for ${fmtCost(r.usage.costUsd)}`);
       } else toast.error(r.error);
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const profiles = (models.data?.profiles ?? []).filter((p) => !p.archived);
-  const markingId = models.data?.assignments.marking;
   const r = mark.data;
 
   return (
@@ -104,10 +107,11 @@ export default function PlaygroundPage() {
             <CardBody className="space-y-4">
               <Field label="Model profile" htmlFor="pg-profile">
                 <Select id="pg-profile" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
-                  <option value="">Use the task assignments (marking: {profiles.find((p) => p.id === markingId)?.name ?? '…'})</option>
+                  {!markingId && <option value="">Use the task assignments</option>}
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.name} · {p.provider === 'mock' ? 'free test marker, no real AI' : `${p.provider} ${p.model}`}
+                      {p.id === markingId ? ' (live: marks projects’ answers)' : ''}
                     </option>
                   ))}
                 </Select>

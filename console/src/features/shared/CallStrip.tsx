@@ -1,4 +1,4 @@
-import { fmtInt, fmtMs, fmtUsd } from '@/lib/format';
+import { fmtInt, fmtMs, fmtCost } from '@/lib/format';
 import type { MarkResponse } from '@/lib/types';
 
 /** Model, host, tokens, cost and time of one call. */
@@ -22,7 +22,7 @@ export function CallStrip({ r }: { r: Partial<MarkResponse> & { model?: string }
       </span>
       <span>
         <span className="text-muted">Cost </span>
-        <span className="tabular font-medium">{fmtUsd(r.usage.costUsd)}</span>
+        <span className="tabular font-medium">{fmtCost(r.usage.costUsd)}</span>
         {r.costEstimated && <span className="text-muted"> (estimated)</span>}
       </span>
       <span>

@@ -131,7 +131,6 @@ export class MarkingService {
           weaknesses: res.weaknesses,
           highlights: res.highlights as unknown as Prisma.InputJsonValue,
           missing: res.missing as unknown as Prisma.InputJsonValue,
-          studentFeedback: res.studentFeedback as unknown as Prisma.InputJsonValue,
           confidence: res.confidence,
           flags: res.flags,
           model: result.model,

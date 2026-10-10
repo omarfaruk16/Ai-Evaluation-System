@@ -47,6 +47,10 @@ export const envSchema = z
     PRICE_CACHED_INPUT_PER_MTOK: z.coerce.number().min(0).default(0),
     PRICE_OUTPUT_PER_MTOK: z.coerce.number().min(0).default(0.18),
 
+    // Encrypts project API keys at rest so the console can show them again. Without it keys are
+    // shown once only. Changing it makes stored keys unreadable (rotate them to store again).
+    SECRETS_ENCRYPTION_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(32, 'use at least 32 random characters').optional()),
+
     // Operator console
     CONSOLE_ENABLED: bool.default('true'),
     // The public base URL clients use for this API (shown in the console's integration details).

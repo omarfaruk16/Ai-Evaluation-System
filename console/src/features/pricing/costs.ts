@@ -5,9 +5,8 @@ export const DEFAULT_ASSUMPTIONS = {
   answerWords: 120,
   tokensPerWord: 1.6,
   questionTokens: 350,
-  outputTokens: 550,
+  outputTokens: 450,
   cacheShare: 0,
-  adjustRate: 0.25,
   overhead: 0.05,
 };
 
@@ -22,7 +21,6 @@ export function costBasis(u: UnitCosts | undefined) {
       ...DEFAULT_ASSUMPTIONS,
       promptBaseTokens: u.promptBaseTokens,
       outputTokens: u.perMarkingCall.outputTokens ?? DEFAULT_ASSUMPTIONS.outputTokens,
-      adjustRate: u.adjustRate ?? DEFAULT_ASSUMPTIONS.adjustRate,
     },
     u.markingProfile.prices,
   );
