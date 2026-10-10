@@ -1,0 +1,111 @@
+# PRODUCTION stack for the AI marking service on its own VPS.
+#
+#   cp .env.production.example .env.production   # fill in secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --scale worker=2
+#
+# Postgres and Redis are never published. The API listens on 127.0.0.1:4200 only; the host's
+# nginx terminates TLS and proxies to it (see deploy/nginx.conf).
+name: ai-marking
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '5'
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://${POSTGRES_USER:-ams}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ams}?schema=public
+  REDIS_URL: redis://redis:6379
+  LLM_PROVIDER: openrouter
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY}
+  OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash-0731}
+  OPENROUTER_PROVIDERS: ${OPENROUTER_PROVIDERS:-deepinfra,parasail}
+  OPENROUTER_QUANTIZATIONS: ${OPENROUTER_QUANTIZATIONS:-fp8}
+  OPENROUTER_ZDR: ${OPENROUTER_ZDR:-true}
+  OPENROUTER_REASONING: ${OPENROUTER_REASONING:-off}
+  OPENROUTER_APP_URL: ${OPENROUTER_APP_URL:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  REALTIME_CONCURRENCY: ${REALTIME_CONCURRENCY:-20}
+  REALTIME_RATE_MAX: ${REALTIME_RATE_MAX:-30}
+  DEFERRED_CONCURRENCY: ${DEFERRED_CONCURRENCY:-10}
+  DEFERRED_RATE_MAX: ${DEFERRED_RATE_MAX:-5}
+  ROUTER_FIRST_N_REALTIME: ${ROUTER_FIRST_N_REALTIME:-20}
+  ROUTER_SMALL_GROUP_MAX: ${ROUTER_SMALL_GROUP_MAX:-300}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    <<: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ams}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ams}
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256 --auth-local=scram-sha-256'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ams} -d ${POSTGRES_DB:-ams}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    <<: *logging
+    # appendonly: queued jobs survive a restart; noeviction: jobs are never silently dropped.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [internal]
+
+  api:
+    build: .
+    image: ai-marking-service:latest
+    restart: unless-stopped
+    <<: *logging
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      <<: *app-env
+      RUN_EMBEDDED_WORKERS: 'false'
+      PORT: 4200
+    # Migrations run once on API start; workers never migrate.
+    command: ['sh', '-c', 'node_modules/.bin/prisma migrate deploy && node dist/main.js']
+    ports:
+      - '127.0.0.1:4200:4200'
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://127.0.0.1:4200/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks: [internal]
+
+  worker:
+    image: ai-marking-service:latest
+    restart: unless-stopped
+    <<: *logging
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      <<: *app-env
+    command: ['node', 'dist/worker.js']
+    networks: [internal]
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  internal:

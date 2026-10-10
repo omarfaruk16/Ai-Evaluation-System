@@ -1,0 +1,41 @@
+# LOCAL DEVELOPMENT ONLY. Publishes Postgres and Redis on non-default ports so this service can
+# run next to other projects on one machine. Production uses docker-compose.prod.yml.
+name: ai-marking-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ams_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ams
+      POSTGRES_PASSWORD: ams_dev_password
+      POSTGRES_DB: ams
+    ports:
+      - '5440:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ams -d ams']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: ams_dev_redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '6390:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
+  redisdata:

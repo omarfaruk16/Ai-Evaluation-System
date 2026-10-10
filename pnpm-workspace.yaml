@@ -1,0 +1,9 @@
+# Single-package project. pnpm 11 blocks dependency build scripts by default (supply-chain
+# safety); only these vetted native/codegen packages may run theirs.
+allowBuilds:
+  esbuild: true
+  prisma: true
+  '@prisma/client': true
+  '@prisma/engines': true
+  # optional native msgpack accelerator; the pure-JS path is fast enough.
+  msgpackr-extract: false
