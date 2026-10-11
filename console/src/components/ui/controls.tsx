@@ -29,13 +29,13 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50',
+        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 pointer-coarse:after:content-[\'\']',
         checked ? 'bg-primary' : 'bg-surface-3 border-input border',
       )}
     >
       <span
         className={cn(
-          'bg-surface inline-block size-4 rounded-full shadow transition-transform',
+          'bg-surface inline-block size-4 rounded-full shadow transition-transform duration-200 ease-[var(--ease-out-soft)]',
           checked ? 'translate-x-[18px]' : 'translate-x-0.5',
         )}
       />
@@ -68,7 +68,7 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="radiogroup" className={cn('bg-surface-2 inline-flex rounded-lg border p-0.5', className)}>
+    <div role="radiogroup" className={cn('bg-surface-2 scrollbar-none inline-flex max-w-full overflow-x-auto rounded-lg border p-0.5', className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -77,8 +77,8 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'rounded-md font-medium whitespace-nowrap transition-colors',
-            size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-[13px]',
+            'shrink-0 rounded-md font-medium whitespace-nowrap transition-[color,background-color,box-shadow] duration-200',
+            size === 'sm' ? 'px-2.5 py-1 text-xs pointer-coarse:py-1.5' : 'px-3 py-1.5 text-[13px] pointer-coarse:py-2',
             value === o.value ? 'bg-surface text-foreground shadow-card' : 'text-muted hover:text-foreground',
           )}
         >
@@ -115,7 +115,7 @@ export function CopyButton({
           toast.error('Copy failed — select the text and copy it by hand');
         }
       }}
-      className={cn('text-muted hover:bg-surface-3 hover:text-foreground inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium', className)}
+      className={cn('text-muted hover:bg-surface-3 hover:text-foreground inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium pointer-coarse:py-2', className)}
     >
       {done ? <Check className="text-success size-3.5" /> : <Copy className="size-3.5" />}
       {done ? 'Copied' : label}
@@ -164,5 +164,5 @@ export function Spinner({ className }: { className?: string }) {
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('bg-surface-3/70 animate-pulse rounded-md', className)} />;
+  return <div className={cn('bg-surface-3/70 animate-pulse rounded-md', className)} aria-hidden />;
 }

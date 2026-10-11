@@ -29,18 +29,33 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
+      {/* Quiet backdrop: a soft accent glow over a faint grid. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]"
+      />
+      <div aria-hidden className="bg-primary/15 pointer-events-none absolute top-[-20%] left-1/2 size-[36rem] -translate-x-1/2 rounded-full blur-3xl" />
+      <div className="stagger relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="bg-primary text-primary-foreground mb-4 flex size-11 items-center justify-center rounded-xl shadow-card">
+          <div className="bg-primary text-primary-foreground mb-4 flex size-12 items-center justify-center rounded-2xl shadow-lg shadow-primary/25">
             <FileText className="size-5" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight">AI Marking Console</h1>
           <p className="text-muted mt-1 text-sm">Sign in to manage models, clients and billing.</p>
         </div>
-        <form onSubmit={submit} className="bg-surface space-y-4 rounded-xl border p-6 shadow-card">
+        <form onSubmit={submit} className="bg-surface/90 space-y-4 rounded-2xl border p-5 shadow-xl backdrop-blur sm:p-6">
           <Field label="Email" htmlFor="email">
-            <Input id="email" type="email" autoComplete="username" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              required
+              // On phones the keyboard would cover half the page before anything is seen.
+              autoFocus={window.matchMedia('(pointer: fine)').matches}
+              value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Password" htmlFor="password">
             <Input
@@ -53,11 +68,11 @@ export function LoginPage() {
             />
           </Field>
           {error && (
-            <p role="alert" className="bg-danger-soft text-danger rounded-md px-3 py-2 text-[13px]">
+            <p role="alert" className="bg-danger-soft text-danger animate-fade-up rounded-md px-3 py-2 text-[13px]">
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" loading={busy}>
+          <Button type="submit" size="lg" className="w-full" loading={busy}>
             <Lock />
             Sign in
           </Button>

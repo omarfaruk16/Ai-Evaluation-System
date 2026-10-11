@@ -97,7 +97,7 @@ function QueueCard({ q }: { q: QueueStatus }) {
   const c = q.counts;
   return (
     <Card>
-      <div className="flex items-start justify-between gap-3 px-5 pt-4">
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 sm:px-5">
         <div>
           <h3 className="text-[15px] font-semibold">{QUEUE_LABEL[q.key]}</h3>
           <p className="text-muted text-xs">
@@ -121,7 +121,7 @@ function QueueCard({ q }: { q: QueueStatus }) {
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-between gap-2 text-[13px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <span className="text-muted">
             {fmtInt(c.completed ?? 0)} completed (recent) · <span className={c.failed ? 'text-danger' : ''}>{fmtInt(c.failed ?? 0)} failed</span>
           </span>
@@ -180,7 +180,7 @@ function FailedJobs({ queue }: { queue: QueueStatus['key'] }) {
         {q.data.map((j) => (
           <Tr key={j.id}>
             <Td className="font-mono text-xs">{j.id}</Td>
-            <Td className="text-muted max-w-[380px] truncate text-xs" title={j.failedReason}>
+            <Td className="text-muted max-w-[380px] truncate text-xs" title={j.failedReason} data-block>
               {j.failedReason}
             </Td>
             <TdNum>{j.attemptsMade}</TdNum>

@@ -83,7 +83,7 @@ export default function ClientDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-[22px] font-semibold tracking-tight">{c.name}</h1>
+              <h1 className="text-xl font-semibold tracking-tight sm:text-[22px]">{c.name}</h1>
               <StatusBadge status={c.active ? 'active' : 'disabled'} />
             </div>
             <p className="text-muted mt-1 text-sm">
@@ -158,7 +158,7 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <Stat label={`Answers in ${fmtMonth(current.month)}`} value={fmtInt(current.usage.completed)} sub={`${fmtInt(current.usage.failed)} failed · ${fmtInt(current.usage.rubricDrafts)} rubric drafts`} />
         <Stat label="AI cost this month" value={fmtCost(current.usage.costUsd)} sub={c.monthlyBudgetUsd !== null ? `Budget ${fmtCost(c.monthlyBudgetUsd)} · ${fmtPct(current.usage.costUsd / (c.monthlyBudgetUsd || 1), 0)} used` : 'No budget cap'} />
         <Stat label="Billed so far" value={current.charges ? fmtMoney(current.charges.subtotal, currency) : '—'} sub={c.plan ? `${c.plan.name} plan` : 'No pricing plan'} />
@@ -253,7 +253,7 @@ export default function ClientDetailPage() {
           {invoices.length === 0 ? (
             <EmptyState title="No invoices yet" description="Create one from the monthly statement." />
           ) : (
-            <Table>
+            <Table stack={false}>
               <tbody>
                 {invoices.map((i) => (
                   <Tr key={i.id}>
@@ -360,7 +360,7 @@ function ProjectKey({ client: c, onRotate, rotating }: { client: Client; onRotat
           <button
             type="button"
             onClick={() => setShown((v) => !v)}
-            className="text-muted hover:bg-surface-3 hover:text-foreground rounded-md p-1.5"
+            className="text-muted hover:bg-surface-3 hover:text-foreground rounded-md p-1.5 pointer-coarse:p-2.5"
             aria-label={shown ? 'Hide key' : 'Show key'}
             title={shown ? 'Hide key' : 'Show key'}
           >

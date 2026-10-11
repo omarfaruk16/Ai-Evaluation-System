@@ -8,7 +8,8 @@ import { EvaluationsService } from './evaluations/evaluations.service';
 import { HealthController } from './health/health.controller';
 import { ProjectController } from './project/project.controller';
 import { RubricsController } from './rubrics/rubrics.controller';
-import { UsageController } from './usage/usage.controller';
+import { ProjectBillingService } from './usage/project-billing.service';
+import { ProjectBillingController, UsageController } from './usage/usage.controller';
 import { WorkersModule } from './workers.module';
 
 @Module({})
@@ -20,8 +21,15 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [CoreModule, ...(embedded ? [WorkersModule] : []), ...(console ? [AdminModule] : [])],
-      controllers: [EvaluationsController, RubricsController, UsageController, ProjectController, HealthController],
-      providers: [EvaluationsService, ApiKeyGuard],
+      controllers: [
+        EvaluationsController,
+        RubricsController,
+        UsageController,
+        ProjectBillingController,
+        ProjectController,
+        HealthController,
+      ],
+      providers: [EvaluationsService, ProjectBillingService, ApiKeyGuard],
     };
   }
 }

@@ -12,6 +12,8 @@ export interface CallRecord {
   clientId: string | null;
   origin?: CallOrigin;
   evaluationId?: string;
+  /** For calls without an evaluation: the project's grouping, for its cost breakdown. */
+  groupId?: string;
   kind: LlmCallKind;
   profileId?: string | null;
   model: string;
@@ -59,6 +61,7 @@ export class UsageService {
         clientId: input.clientId,
         origin: input.origin ?? 'client',
         evaluationId: input.evaluationId ?? null,
+        groupId: input.groupId ?? null,
         kind: input.kind,
         profileId: input.profileId ?? null,
         model: input.model,

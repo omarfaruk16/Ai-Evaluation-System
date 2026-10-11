@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { StatusBadge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClass } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton, Stat } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
@@ -49,10 +49,8 @@ export default function StatementsPage() {
           q.data && (
             <>
               <MonthPicker month={q.data.month} onChange={changeMonth} max={maxMonth} />
-              <a href={`/admin-api/billing/statements.csv?month=${q.data.month}`}>
-                <Button variant="outline">
-                  <Download /> CSV
-                </Button>
+              <a href={`/admin-api/billing/statements.csv?month=${q.data.month}`} className={buttonClass('outline')} download>
+                <Download /> CSV
               </a>
             </>
           )
@@ -64,7 +62,7 @@ export default function StatementsPage() {
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             {Object.keys(q.data.totals).length === 0 ? (
               <Stat label="Billed" value="—" sub="No project has a pricing plan" />
             ) : (

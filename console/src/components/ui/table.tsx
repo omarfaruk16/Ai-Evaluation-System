@@ -1,10 +1,38 @@
-import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react';
+import { useLayoutEffect, useRef, type HTMLAttributes, type TdHTMLAttributes, type ThHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>) {
+/** Gives every body cell its column's header text, which a phone shows beside the value. */
+function labelCells(table: HTMLTableElement) {
+  const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent?.trim() ?? '');
+  for (const tr of table.querySelectorAll('tbody tr')) {
+    let col = 0;
+    for (const cell of tr.children) {
+      const td = cell as HTMLTableCellElement;
+      const label = td.colSpan > 1 ? '' : (heads[col] ?? '');
+      if (td.dataset.label !== label) td.dataset.label = label;
+      col += td.colSpan || 1;
+    }
+  }
+}
+
+/**
+ * A data table. On phones (`stack`, the default) each row turns into a card with labelled values;
+ * pass `stack={false}` for grids that only make sense as a grid (they scroll sideways instead).
+ */
+export function Table({ className, stack = true, ...rest }: HTMLAttributes<HTMLTableElement> & { stack?: boolean }) {
+  const ref = useRef<HTMLTableElement>(null);
+  useLayoutEffect(() => {
+    const table = ref.current;
+    if (!table || !stack) return;
+    labelCells(table);
+    // Rows can change without this component re-rendering (e.g. a row's own state).
+    const mo = new MutationObserver(() => labelCells(table));
+    mo.observe(table, { childList: true, subtree: true, characterData: true });
+    return () => mo.disconnect();
+  }, [stack]);
   return (
-    <div className="overflow-x-auto">
-      <table className={cn('w-full border-collapse text-left text-sm', className)} {...rest} />
+    <div className="overflow-x-auto overscroll-x-contain">
+      <table ref={ref} className={cn('w-full border-collapse text-left text-sm', stack && 'stack', className)} {...rest} />
     </div>
   );
 }
@@ -18,7 +46,16 @@ export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement
 }
 
 export function Tr({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn('border-b last:border-0', rest.onClick && 'hover:bg-surface-2/60 cursor-pointer', className)} {...rest} />;
+  return (
+    <tr
+      className={cn(
+        'border-b transition-colors last:border-0',
+        rest.onClick && 'hover:bg-surface-2/60 active:bg-surface-2 cursor-pointer',
+        className,
+      )}
+      {...rest}
+    />
+  );
 }
 
 export function Td({ className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {

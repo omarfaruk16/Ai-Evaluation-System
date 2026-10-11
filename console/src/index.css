@@ -109,7 +109,42 @@
   --color-info-soft: var(--info-soft);
   --color-ring: var(--ring);
   --shadow-card: var(--shadow);
+
+  /* Motion: short, eased, and only where it explains a change (open, enter, move). */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-up: fade-up 360ms var(--ease-out-soft) both;
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-fade-out: fade-out 160ms ease-in both;
+  --animate-pop-in: pop-in 180ms var(--ease-out-soft) both;
+  --animate-pop-out: pop-out 120ms ease-in both;
+  --animate-sheet-up: sheet-up 320ms var(--ease-out-soft) both;
+  --animate-sheet-down: sheet-down 200ms ease-in both;
+  --animate-slide-in-right: slide-in-right 300ms var(--ease-out-soft) both;
+  --animate-slide-in-left: slide-in-left 280ms var(--ease-out-soft) both;
+  --animate-slide-out-left: slide-out-left 200ms ease-in both;
+  --animate-slide-out-right: slide-out-right 200ms ease-in both;
 }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(0.97); }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheet-down { from { transform: none; } to { transform: translateY(100%); } }
+@keyframes slide-in-left { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes slide-out-left { from { transform: none; } to { transform: translateX(-100%); } }
+@keyframes slide-in-right { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes slide-out-right { from { transform: none; } to { transform: translateX(100%); } }
 
 @layer base {
   * {
@@ -117,6 +152,10 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, a, [role='button'], label {
+    touch-action: manipulation;
   }
   body {
     background: var(--background);
@@ -140,6 +179,75 @@
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+  /* Children enter one after another (page sections, KPI tiles). */
+  .stagger > * {
+    animation: var(--animate-fade-up);
+  }
+  .stagger > :nth-child(2) { animation-delay: 40ms; }
+  .stagger > :nth-child(3) { animation-delay: 80ms; }
+  .stagger > :nth-child(4) { animation-delay: 120ms; }
+  .stagger > :nth-child(5) { animation-delay: 160ms; }
+  .stagger > :nth-child(n + 6) { animation-delay: 200ms; }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/*
+ * Tables on phones: each row becomes a card. The title cell (data-title, else the first cell)
+ * leads; every other cell shows its column name (data-label, set by <Table>) floated left and its
+ * value, with any second lines, right-aligned beside it.
+ */
+@media (max-width: 639.98px) {
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody { display: block; width: 100%; }
+  table.stack tr { display: flex; flex-direction: column; width: 100%; padding: 0.75rem 1rem; }
+  table.stack td {
+    display: flow-root;
+    max-width: none;
+    padding: 0.2rem 0 !important;
+    text-align: right;
+    white-space: normal;
+  }
+  table.stack td::before {
+    content: attr(data-label);
+    float: left;
+    margin-right: 1rem;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6rem;
+    text-align: left;
+  }
+  table.stack td:empty { display: none; }
+  table.stack td[data-label='']::before { display: none; }
+  table.stack td[data-label=''] { text-align: left; }
+  table.stack td > .flex { justify-content: flex-end; }
+  /* Long text (data-block): label above, text left-aligned beneath it. */
+  table.stack td[data-block] { text-align: left; }
+  table.stack td[data-block]::before { float: none; display: block; line-height: 1.4; margin: 0 0 0.1rem; }
+  table.stack td[colspan] { text-align: center; }
+  table.stack td[colspan]::before { display: none; }
+  /* The card's title. */
+  table.stack td[data-title],
+  table.stack tr:not(:has(> td[data-title])) > td:first-child {
+    order: -1;
+    text-align: left;
+    font-weight: 500;
+    padding-bottom: 0.35rem !important;
+  }
+  table.stack td[data-title]::before,
+  table.stack tr:not(:has(> td[data-title])) > td:first-child::before { display: none; }
+  table.stack td[data-title] > .flex,
+  table.stack tr:not(:has(> td[data-title])) > td:first-child > .flex { justify-content: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
   }
 }
 

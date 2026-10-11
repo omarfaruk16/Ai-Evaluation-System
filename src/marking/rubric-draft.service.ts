@@ -16,6 +16,8 @@ export interface RubricDraftInput {
   maxMarks: number;
   markStep: number;
   maxCriteria: number;
+  /** The project's grouping for its cost breakdown (e.g. a course). */
+  groupId?: string;
 }
 
 const ATTEMPTS = 2;
@@ -47,13 +49,19 @@ export class RubricDraftService {
         data: {
           clientId: client?.id ?? null,
           origin: opts.origin ?? 'client',
+          groupId: input.groupId ?? null,
           ok,
           criteria,
           costUsd: Number(total.costUsd.toFixed(6)),
           error: error?.slice(0, 1000) ?? null,
         },
       });
-    const base = { clientId: client?.id ?? null, origin: opts.origin ?? ('client' as const), kind: 'rubric_draft' as const };
+    const base = {
+      clientId: client?.id ?? null,
+      origin: opts.origin ?? ('client' as const),
+      groupId: input.groupId,
+      kind: 'rubric_draft' as const,
+    };
     let issues: Issue[] = [];
     let last: RubricDraftOutput | null = null;
     let model = this.llm.model;

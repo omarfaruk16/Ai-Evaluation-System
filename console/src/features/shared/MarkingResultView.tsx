@@ -81,8 +81,10 @@ export function MarkingResultView({ result, answer, maxMarks }: { result: Markin
                   <span className="text-muted mr-1.5 font-mono text-xs">{c.id}</span>
                   {c.criterion}
                 </Td>
-                <Td className="text-muted text-[13px]">{c.reason}</Td>
-                <TdNum className={c.awarded >= c.max ? 'text-success font-medium' : c.awarded === 0 ? 'text-danger' : ''}>
+                <Td className="text-muted text-[13px]" data-block>
+                  {c.reason}
+                </Td>
+                <TdNum className={`max-sm:-order-1 ${c.awarded >= c.max ? 'text-success font-medium' : c.awarded === 0 ? 'text-danger' : ''}`}>
                   {fmtNum(c.awarded, 1)} / {fmtNum(c.max, 1)}
                 </TdNum>
               </Tr>

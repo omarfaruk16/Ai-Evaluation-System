@@ -56,7 +56,7 @@ export default function InvoicePage() {
             <ArrowLeft className="size-3.5" /> Invoices
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-[22px] font-semibold tracking-tight">{inv.number}</h1>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-[22px]">{inv.number}</h1>
             <StatusBadge status={inv.status} />
           </div>
           <p className="text-muted mt-1 text-sm">
@@ -113,7 +113,7 @@ export default function InvoicePage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="print-sheet bg-white text-zinc-900 mx-auto w-full max-w-[820px] rounded-xl border p-8 shadow-card sm:p-12">
+        <div className="print-sheet bg-white text-zinc-900 mx-auto w-full max-w-[820px] rounded-xl border p-5 shadow-card sm:p-12">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
               <p className="text-xl font-semibold tracking-tight">{from.name || 'Your business name'}</p>
@@ -128,7 +128,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <div className="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2">
             <div>
               <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Bill to</p>
               <p className="mt-1.5 text-sm font-medium">{to.organisation}</p>

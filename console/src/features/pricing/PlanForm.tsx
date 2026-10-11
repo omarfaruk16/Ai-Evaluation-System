@@ -101,6 +101,7 @@ export function PlanForm({ open, onOpenChange, plan }: { open: boolean; onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       size="xl"
+      dismissible={false}
       title={plan ? `Edit ${plan.name}` : 'New pricing plan'}
       description="What a client pays each month. Invoices already created keep the prices they were made with."
       footer={

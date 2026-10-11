@@ -70,6 +70,7 @@ export function ClientForm({
       open={open}
       onOpenChange={onOpenChange}
       size="lg"
+      dismissible={false}
       title={client ? `Edit ${client.name}` : 'New project'}
       description={client ? undefined : 'A project is one customer’s software that uses your marking API — for example a university’s e-Exam system. It gets its own API key, usage limit and monthly bill.'}
       footer={
@@ -93,7 +94,7 @@ export function ClientForm({
           className="sm:col-span-2"
           hint="Leave empty: the project registers its own webhook when it connects. Set it only for software that can’t."
         >
-          <Input id="c-webhook" value={form.webhookUrl} onChange={set('webhookUrl')} placeholder="https://exam.example.edu/api/v1/ai-marking/webhook" />
+          <Input id="c-webhook" inputMode="url" autoCapitalize="none" autoCorrect="off" value={form.webhookUrl} onChange={set('webhookUrl')} placeholder="https://exam.example.edu/api/v1/ai-marking/webhook" />
         </Field>
         <Field label="Pricing plan" htmlFor="c-plan" hint="What this project is billed. Without a plan it is not billed.">
           <Select id="c-plan" value={form.planId} onChange={set('planId')}>

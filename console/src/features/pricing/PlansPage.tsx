@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClass } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
 import { useConfirm } from '@/components/ui/confirm';
 import { Menu, MenuItem, MenuSeparator } from '@/components/ui/menu';
@@ -25,10 +25,8 @@ export default function PlansPage() {
         description="How you charge customers. Assign a plan to a project to bill it; monthly statements and invoices follow from the plan."
         actions={
           <>
-            <Link to="/pricing/quote">
-              <Button variant="outline">
-                <Calculator /> Quote calculator
-              </Button>
+            <Link to="/pricing/quote" className={buttonClass('outline')}>
+              <Calculator /> Quote calculator
             </Link>
             <Button onClick={() => setEditing('new')}>
               <Plus /> New plan

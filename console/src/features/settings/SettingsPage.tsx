@@ -50,14 +50,19 @@ function BillingForm({ section }: { section: 'business' | 'currency' }) {
   const q = useBillingSettings();
   const [f, setF] = useState<BillingSettings | null>(null);
   const [rates, setRates] = useState<{ code: string; rate: string }[]>([]);
+  const load = (d: BillingSettings) => {
+    setF(d);
+    setRates(Object.entries(d.fxRates).map(([code, rate]) => ({ code, rate: String(rate) })));
+  };
+  // Fill the form once. A background refetch (e.g. switching back to this tab or app) must not
+  // overwrite what is being typed; after a save the form shows what was saved.
   useEffect(() => {
-    if (!q.data) return;
-    setF(q.data);
-    setRates(Object.entries(q.data.fxRates).map(([code, rate]) => ({ code, rate: String(rate) })));
-  }, [q.data]);
+    if (q.data && f === null) load(q.data);
+  }, [q.data, f]);
   const save = useMutation({
     mutationFn: (body: BillingSettings) => put<BillingSettings>('/billing/settings', body),
     onSuccess: (s) => {
+      load(s);
       qc.setQueryData(['billing', 'settings'], s);
       qc.invalidateQueries({ queryKey: ['billing'] });
       qc.invalidateQueries({ queryKey: ['overview'] });
@@ -262,6 +267,7 @@ function AddAdmin({ onClose }: { onClose: () => void }) {
       open
       onOpenChange={(o) => !o && onClose()}
       size="sm"
+      dismissible={false}
       title="Add admin"
       footer={
         <>
@@ -363,7 +369,26 @@ function Account() {
 
 function describeAgent(ua: string | null): string {
   if (!ua) return 'Unknown device';
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-  const os = /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Linux/.test(ua) ? 'Linux' : '';
+  const browser = /Edg(e|iOS|A)?\//.test(ua)
+    ? 'Edge'
+    : /Chrome\/|CriOS\//.test(ua)
+      ? 'Chrome'
+      : /Firefox\/|FxiOS\//.test(ua)
+        ? 'Firefox'
+        : /Safari\//.test(ua)
+          ? 'Safari'
+          : 'Browser';
+  // iPhone and iPad user agents also say "like Mac OS X", and Android ones say "Linux": test those first.
+  const os = /iPhone|iPad|iPod/.test(ua)
+    ? 'iOS'
+    : /Android/.test(ua)
+      ? 'Android'
+      : /Mac OS X/.test(ua)
+        ? 'macOS'
+        : /Windows/.test(ua)
+          ? 'Windows'
+          : /Linux/.test(ua)
+            ? 'Linux'
+            : '';
   return [browser, os].filter(Boolean).join(' on ');
 }

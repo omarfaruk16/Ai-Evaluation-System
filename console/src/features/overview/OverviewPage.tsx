@@ -44,7 +44,7 @@ function Body({ o }: { o: Overview }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 [&>:last-child]:col-span-2 sm:[&>:last-child]:col-span-1">
         <Stat
           label="Answers marked"
           icon={<ListChecks />}
@@ -139,7 +139,7 @@ function Body({ o }: { o: Overview }) {
             {(Object.keys(TASK_LABEL) as Task[]).map((task) => {
               const m = o.models[task];
               return (
-                <div key={task} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <div key={task} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-3">
                     <Bot className="text-muted size-4" />
                     <span className="text-sm font-medium">{TASK_LABEL[task]}</span>
@@ -181,7 +181,7 @@ function Body({ o }: { o: Overview }) {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader title="Cost by task" description="Project traffic and your own playground tests, in USD." />
+          <CardHeader title="Cost by task" description={`Project traffic and your own playground tests, in ${costCurrencyCode()}.`} />
           {o.byKind.length === 0 ? (
             <EmptyState icon={<Coins />} title="No model calls in this range" />
           ) : (

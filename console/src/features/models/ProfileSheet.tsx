@@ -96,6 +96,7 @@ export function ProfileSheet({ open, onOpenChange, profile }: { open: boolean; o
       open={open}
       onOpenChange={onOpenChange}
       width="max-w-4xl"
+      dismissible={false}
       title={profile ? `Edit ${profile.name}` : 'New model profile'}
       description="A profile is one way to call a model: provider, model id, routing, settings and prices."
       footer={
@@ -339,7 +340,7 @@ function ModelSearch({ value, onChange }: { value: string; onChange: (id: string
                     onChange(m.id, m);
                     setFocused(false);
                   }}
-                  className="hover:bg-surface-2 flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+                  className="hover:bg-surface-2 active:bg-surface-2 flex w-full items-center justify-between gap-3 px-3 py-2 text-left pointer-coarse:py-3"
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-[13px] font-medium">{m.name}</span>
@@ -441,12 +442,21 @@ function HostPicker({
             const quantOk = !quant.length || (h.quantization !== null && quant.includes(h.quantization));
             return (
               <Tr key={`${h.slug}-${h.tag}-${i}`} onClick={() => toggle(h.slug)} className={cn(on && 'bg-primary-soft/60', !quantOk && 'opacity-55')}>
-                <Td>
+                <Td className="max-sm:hidden">
                   <span className={cn('flex size-4 items-center justify-center rounded border', on ? 'bg-primary border-primary text-primary-foreground' : 'border-input')}>
                     {on && <Check className="size-3" />}
                   </span>
                 </Td>
-                <Td>
+                <Td data-title>
+                  <span
+                    className={cn(
+                      'mr-2 inline-flex size-4 translate-y-0.5 items-center justify-center rounded border sm:hidden',
+                      on ? 'bg-primary border-primary text-primary-foreground' : 'border-input',
+                    )}
+                    aria-hidden
+                  >
+                    {on && <Check className="size-3" />}
+                  </span>
                   <span className="font-medium">{h.name}</span>
                   <span className="text-muted ml-1.5 font-mono text-xs">{h.slug}</span>
                   {!h.supportsStructuredOutput && (

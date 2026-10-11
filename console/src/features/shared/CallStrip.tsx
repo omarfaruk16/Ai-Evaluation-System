@@ -5,10 +5,10 @@ import type { MarkResponse } from '@/lib/types';
 export function CallStrip({ r }: { r: Partial<MarkResponse> & { model?: string } }) {
   if (!r.usage) return null;
   return (
-    <div className="bg-surface-2/70 flex flex-wrap gap-x-6 gap-y-2 rounded-lg px-4 py-3 text-[13px]">
+    <div className="bg-surface-2/70 flex flex-wrap gap-x-6 gap-y-2 rounded-lg px-3 py-3 sm:px-4 text-[13px]">
       <span>
         <span className="text-muted">Model </span>
-        <span className="font-mono text-xs">{r.model}</span>
+        <span className="font-mono text-xs break-all">{r.model}</span>
       </span>
       <span>
         <span className="text-muted">Host </span>

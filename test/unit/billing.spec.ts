@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { passwordProblem, hashPassword, verifyPassword } from '../../src/admin/auth/password';
-import { billableAnswers, computeCharges, type PlanTerms, type UsageCounts } from '../../src/admin/billing/billing.calc';
+import {
+  allocateCharges,
+  billableAnswers,
+  computeCharges,
+  type GroupUsage,
+  type PlanTerms,
+  type UsageCounts,
+} from '../../src/admin/billing/billing.calc';
 import { currentMonth, monthPeriod, shiftMonth, zonedMidnight } from '../../src/admin/time';
 
 const usage = (u: Partial<UsageCounts> = {}): UsageCounts => ({
@@ -134,5 +141,51 @@ describe('console passwords', () => {
     expect(passwordProblem('onlyletters')).toMatch(/letters and digits/);
     expect(passwordProblem('letters4and5digits')).toBeNull();
     expect(passwordProblem('a long passphrase without digits')).toBeNull();
+  });
+});
+
+describe('splitting a month between groups', () => {
+  const g = (groupId: string | null, u: Partial<UsageCounts>): GroupUsage => ({ groupId, ...usage(u) });
+  const sum = (rows: { subtotal: number; total: number }[], k: 'subtotal' | 'total') =>
+    Math.round(rows.reduce((s, r) => s + r[k], 0) * 100) / 100;
+
+  it('splits answers and the fee by billable answers, drafts by drafts, and adds up exactly', () => {
+    const groups = [
+      g('exam-a', { completed: 1500, blank: 100 }),
+      g('exam-b', { completed: 1200 }),
+      g('part-x', { rubricDrafts: 3 }),
+      g(null, { rubricDrafts: 1 }),
+    ];
+    const total = groups.reduce((u, x) => {
+      u.completed += x.completed;
+      u.blank += x.blank;
+      u.rubricDrafts += x.rubricDrafts;
+      return u;
+    }, usage());
+    const c = computeCharges(total, perAnswer, 122);
+    const rows = allocateCharges(c, perAnswer, groups);
+    expect(sum(rows, 'subtotal')).toBe(c.subtotal);
+    expect(sum(rows, 'total')).toBe(c.total);
+    const a = rows.find((r) => r.groupId === 'exam-a')!;
+    const b = rows.find((r) => r.groupId === 'exam-b')!;
+    expect(a.billableAnswers).toBe(1400);
+    expect(a.subtotal / b.subtotal).toBeCloseTo(1400 / 1200, 2);
+    expect(rows.find((r) => r.groupId === 'part-x')!.subtotal).toBe(15);
+    expect(rows.find((r) => r.groupId === null)!.subtotal).toBe(5);
+  });
+
+  it('puts a fee nothing can carry on the null group', () => {
+    const c = computeCharges(usage(), perAnswer, 122);
+    const rows = allocateCharges(c, perAnswer, []);
+    expect(rows).toEqual([{ groupId: null, billableAnswers: 0, failed: 0, rubricDrafts: 0, subtotal: 5000, total: 5750 }]);
+  });
+
+  it('splits a cost-plus charge by AI cost', () => {
+    const plan: PlanTerms = { ...perAnswer, billingModel: 'cost_plus', monthlyFee: 0, markupPercent: 50, taxPercent: 0 };
+    const groups = [g('a', { completed: 10, costUsd: 0.3 }), g('b', { completed: 10, costUsd: 0.1 })];
+    const c = computeCharges(usage({ completed: 20, costUsd: 0.4 }), plan, 100);
+    const rows = allocateCharges(c, plan, groups);
+    expect(rows.find((r) => r.groupId === 'a')!.subtotal).toBe(45);
+    expect(rows.find((r) => r.groupId === 'b')!.subtotal).toBe(15);
   });
 });

@@ -3,7 +3,7 @@ import { Download, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StatusBadge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { buttonClass } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/controls';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton } from '@/components/ui/page';
@@ -28,11 +28,9 @@ export default function InvoicesPage() {
         title="Invoices"
         description="Frozen monthly bills. Create them from Statements, issue them, then mark them paid."
         actions={
-          <a href="/admin-api/billing/invoices.csv">
-            <Button variant="outline">
-              <Download /> CSV
-            </Button>
-          </a>
+          <a href="/admin-api/billing/invoices.csv" className={buttonClass('outline')} download>
+                <Download /> CSV
+              </a>
         }
       />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

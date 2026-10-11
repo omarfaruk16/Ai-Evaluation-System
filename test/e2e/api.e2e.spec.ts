@@ -385,6 +385,52 @@ describe('marking pipeline', () => {
     expect(JSON.stringify(res.body)).not.toMatch(/cost|token|usd/i);
   });
 
+  it('bills the project by month, split by its groups, without revealing AI cost', async () => {
+    const draft = await request(http).post('/v1/rubrics/draft').set(auth()).send({
+      question: question.text,
+      modelAnswer: question.modelAnswer,
+      maxMarks: 6,
+      groupId: 'part:p1',
+    });
+    expect(draft.status).toBe(200);
+
+    const unpriced = await request(http).get('/v1/billing').set(auth());
+    expect(unpriced.status).toBe(200);
+    expect(unpriced.body.plan).toBeNull();
+    expect(unpriced.body.months).toHaveLength(12);
+    expect(unpriced.body.months.at(-1).charges).toBeNull();
+
+    const plan = await prisma.pricingPlan.create({
+      data: {
+        name: `e2e-plan-${Date.now()}`,
+        currency: 'BDT',
+        pricePerAnswer: 3,
+        pricePerRubricDraft: 10,
+        monthlyFee: 100,
+        markupPercent: 40,
+        taxPercent: 15,
+      },
+    });
+    await prisma.client.update({ where: { name: 'e2e' }, data: { planId: plan.id } });
+    try {
+      const res = await request(http).get('/v1/billing').set(auth());
+      expect(res.status).toBe(200);
+      const month = res.body.months.at(-1);
+      expect(month.charges.total).toBeGreaterThan(0);
+      const groups = month.groups as { groupId: string | null; total: number; billableAnswers: number; rubricDrafts: number }[];
+      const sum = groups.reduce((s, g) => s + g.total, 0);
+      expect(Math.round(sum * 100) / 100).toBe(month.charges.total);
+      expect(groups.find((g) => g.groupId === 'exam-1')!.billableAnswers).toBeGreaterThan(0);
+      expect(groups.find((g) => g.groupId === 'part:p1')!.rubricDrafts).toBe(1);
+      // Prices yes; the AI's own cost, markup and margin never.
+      expect(JSON.stringify(res.body)).not.toMatch(/cost|usd|markup|margin/i);
+      const bad = await request(http).get('/v1/billing').query({ from: '2026-13' }).set(auth());
+      expect(bad.status).toBe(400);
+    } finally {
+      await prisma.client.update({ where: { name: 'e2e' }, data: { planId: null } });
+    }
+  });
+
   it('refuses work when the monthly budget is used up', async () => {
     const res = await request(http)
       .post('/v1/evaluations')

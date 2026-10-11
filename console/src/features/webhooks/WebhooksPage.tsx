@@ -63,7 +63,7 @@ export default function WebhooksPage() {
             { value: 'delivered', label: 'Delivered' },
           ]}
         />
-        <Select className="w-52" value={clientId} onChange={(e) => setParam('clientId', e.target.value)} aria-label="Project">
+        <Select className="w-full sm:w-52" value={clientId} onChange={(e) => setParam('clientId', e.target.value)} aria-label="Project">
           <option value="">All projects</option>
           {clients.data?.map((c) => (
             <option key={c.id} value={c.id}>
@@ -100,11 +100,11 @@ export default function WebhooksPage() {
                   <Td className="text-muted text-xs whitespace-nowrap" title={fmtDate(w.createdAt, true)}>
                     {fmtRelative(w.createdAt)}
                   </Td>
-                  <Td>
+                  <Td data-title>
                     <Link to={`/projects/${w.clientId}`} className="font-medium hover:underline">
                       {w.clientName}
                     </Link>
-                    <p className="text-muted max-w-[260px] truncate font-mono text-[11px]" title={w.url}>
+                    <p className="text-muted max-w-[260px] truncate font-mono text-[11px] max-sm:max-w-full" title={w.url}>
                       {w.url}
                     </p>
                   </Td>

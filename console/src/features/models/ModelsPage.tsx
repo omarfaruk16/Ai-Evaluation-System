@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Copy, FlaskConical, KeyRound, MoreHorizontal, Pencil, Plus, RotateCcw, ShieldAlert, Wallet } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -110,7 +110,7 @@ function Assignments({ data }: { data: NonNullable<ReturnType<typeof useModels>[
           </Button>
         }
       />
-      <CardBody className="grid gap-4 sm:grid-cols-3">
+      <CardBody className="grid gap-4 sm:grid-cols-2">
         {TASKS.map((t) => (
           <Field key={t} label={TASK_LABEL[t]} htmlFor={`assign-${t}`}>
             <Select id={`assign-${t}`} value={value[t]} onChange={(e) => setValue((v) => ({ ...v, [t]: e.target.value }))}>
@@ -124,7 +124,7 @@ function Assignments({ data }: { data: NonNullable<ReturnType<typeof useModels>[
           </Field>
         ))}
         {mockInUse && (
-          <p className="text-warning flex items-center gap-2 text-xs sm:col-span-3">
+          <p className="text-warning flex items-center gap-2 text-xs sm:col-span-2">
             <ShieldAlert className="size-3.5" />
             The mock marker scores by keyword overlap — fine for development, refused in production.
           </p>
@@ -149,7 +149,7 @@ function ProfileCard({ p, onEdit, onTest, onKey }: { p: Profile; onEdit: () => v
 
   return (
     <Card className={p.archived ? 'opacity-60' : undefined}>
-      <div className="flex items-start justify-between gap-3 px-5 pt-4">
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 sm:px-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-[15px] font-semibold">{p.name}</h3>
@@ -255,7 +255,11 @@ function Mini({ label, value, warn }: { label: string; value: string; warn?: boo
 /** Marks the built-in sample answer with this profile. */
 function TestDialog({ profile, onClose }: { profile: Profile; onClose: () => void }) {
   const run = useMutation({ mutationFn: () => post<MarkResponse>(`/models/${profile.id}/test`) });
+  // One paid call per opening, even when React runs effects twice (StrictMode in development).
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     run.mutate();
   }, []);
   const r = run.data;

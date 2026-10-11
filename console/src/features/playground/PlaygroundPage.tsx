@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlaskConical, Plus, Sparkles, Trash2, Wand2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
@@ -57,6 +57,7 @@ export default function PlaygroundPage() {
   const rubricOk = criteria.length > 0 && criteria.every((c) => c.criterion.trim()) && Math.abs(total - Number(maxMarks)) < 1e-6;
   const renumber = (list: (Criterion & { key: number })[]) => list.map((c, i) => ({ ...c, id: `c${i + 1}` }));
 
+  const resultRef = useRef<HTMLDivElement>(null);
   const mark = useMutation({
     mutationFn: () =>
       post<MarkResponse>('/playground/mark', {
@@ -68,6 +69,12 @@ export default function PlaygroundPage() {
         answer,
         ...(profileId ? { profileId } : {}),
       }),
+    // Below xl the result sits under the form: bring it into view so the press visibly did something.
+    onMutate: () => {
+      if (!window.matchMedia('(min-width: 1280px)').matches) {
+        requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      }
+    },
     onError: (e) => toast.error(errorMessage(e)),
   });
   const draft = useMutation({
@@ -153,8 +160,8 @@ export default function PlaygroundPage() {
             />
             <CardBody className="space-y-3">
               {criteria.map((c, i) => (
-                <div key={c.key} className="grid grid-cols-[36px_1fr_76px_32px] items-start gap-2">
-                  <span className="text-muted pt-2 font-mono text-xs">{c.id}</span>
+                <div key={c.key} className="animate-fade-up grid grid-cols-[24px_1fr_68px_auto] items-start gap-2 sm:grid-cols-[36px_1fr_76px_32px]">
+                  <span className="text-muted pt-2.5 font-mono text-xs sm:pt-2">{c.id}</span>
                   <div className="grid gap-1.5">
                     <Input
                       value={c.criterion}
@@ -165,7 +172,7 @@ export default function PlaygroundPage() {
                     <Input
                       value={c.awardWhen}
                       placeholder="Award when… (optional)"
-                      className="h-8 text-[13px]"
+                      className="h-9 sm:h-8 sm:text-[13px]"
                       onChange={(e) => setCriteria((list) => list.map((x, j) => (j === i ? { ...x, awardWhen: e.target.value } : x)))}
                       aria-label={`Award when for ${c.id}`}
                     />
@@ -208,7 +215,7 @@ export default function PlaygroundPage() {
           </Card>
         </div>
 
-        <div className="xl:sticky xl:top-6 xl:self-start">
+        <div ref={resultRef} className="scroll-mt-20 xl:sticky xl:top-6 xl:self-start">
           <Card>
             <CardHeader title="Result" description={r ? `${r.profile.name} · ${r.profile.model}` : 'The model’s suggestion appears here.'} />
             <CardBody>

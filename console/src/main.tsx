@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { StrictMode } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
@@ -19,9 +19,19 @@ const queryClient = new QueryClient({
   },
 });
 
+const PHONE = '(max-width: 1023.98px)';
+
+/** Toasts sit at the top on phones, clear of the bottom tab bar and the thumb. */
 function ThemedToaster() {
   const { resolved } = useTheme();
-  return <Toaster theme={resolved} position="bottom-right" richColors closeButton />;
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE);
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return <Toaster theme={resolved} position={phone ? 'top-center' : 'bottom-right'} richColors closeButton />;
 }
 
 createRoot(document.getElementById('root')!).render(

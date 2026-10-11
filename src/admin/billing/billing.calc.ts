@@ -99,3 +99,68 @@ export function computeCharges(u: UsageCounts, plan: PlanTerms, fx: number): Cha
     marginPercent: subtotal > 0 ? round2((margin / subtotal) * 100) : null,
   };
 }
+
+/** One group's activity in a period (a project's own grouping, e.g. an exam). */
+export interface GroupUsage extends UsageCounts {
+  groupId: string | null;
+}
+
+export interface GroupCharge {
+  groupId: string | null;
+  billableAnswers: number;
+  failed: number;
+  rubricDrafts: number;
+  subtotal: number;
+  total: number;
+}
+
+/**
+ * Splits a period's charges across groups: rubric-draft charges by drafts, everything else
+ * (subscription, answers or AI usage) by billable answers on per-answer plans and by AI cost on
+ * cost-plus plans. Work with no group, or a charge nothing can carry, goes to the null group.
+ * Rounded so the groups add up exactly to the period's subtotal and total.
+ */
+export function allocateCharges(charges: Charges, plan: PlanTerms, groups: GroupUsage[]): GroupCharge[] {
+  const draftAmount = round2(
+    charges.lines.filter((l) => l.description === 'AI rubric drafts').reduce((s, l) => s + l.amount, 0),
+  );
+  const rest = charges.subtotal - draftAmount;
+  const rows = new Map<string | null, GroupCharge & { raw: number }>();
+  const row = (g: string | null) => {
+    let r = rows.get(g);
+    if (!r) rows.set(g, (r = { groupId: g, billableAnswers: 0, failed: 0, rubricDrafts: 0, subtotal: 0, total: 0, raw: 0 }));
+    return r;
+  };
+  for (const g of groups) {
+    const r = row(g.groupId);
+    r.billableAnswers += billableAnswers(g, plan);
+    r.failed += g.failed;
+    r.rubricDrafts += g.rubricDrafts;
+  }
+  const spread = (amount: number, weight: (g: GroupUsage) => number) => {
+    if (amount === 0) return;
+    const sum = groups.reduce((s, g) => s + weight(g), 0);
+    if (sum <= 0) {
+      row(null).raw += amount;
+      return;
+    }
+    for (const g of groups) row(g.groupId).raw += (amount * weight(g)) / sum;
+  };
+  spread(draftAmount, (g) => g.rubricDrafts);
+  spread(rest, plan.billingModel === 'per_answer' ? (g) => billableAnswers(g, plan) : (g) => g.costUsd);
+
+  const list = [...rows.values()];
+  const fit = (key: 'subtotal' | 'total', target: number, factor: number) => {
+    for (const r of list) r[key] = round2(r.raw * factor);
+    const diff = round2(target - list.reduce((s, r) => s + r[key], 0));
+    if (diff !== 0 && list.length > 0) {
+      const largest = list.reduce((a, b) => (Math.abs(b.raw) > Math.abs(a.raw) ? b : a));
+      largest[key] = round2(largest[key] + diff);
+    }
+  };
+  fit('subtotal', charges.subtotal, 1);
+  fit('total', charges.total, charges.subtotal > 0 ? charges.total / charges.subtotal : 1);
+  return list
+    .filter((r) => r.total !== 0 || r.billableAnswers > 0 || r.failed > 0 || r.rubricDrafts > 0)
+    .map(({ raw: _raw, ...r }) => r);
+}

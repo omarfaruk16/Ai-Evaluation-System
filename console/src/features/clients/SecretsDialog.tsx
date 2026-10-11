@@ -32,7 +32,7 @@ export function SecretsDialog({
   const envShown = env.map(([k, v]) => `${k}=${k === 'AI_MARKING_URL' ? v : maskSecret(v)}`).join('\n');
 
   return (
-    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={title} size="lg" footer={<Button onClick={onClose}>Done</Button>}>
+    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={title} size="lg" dismissible={false} footer={<Button onClick={onClose}>Done</Button>}>
       <div className="space-y-5">
         <div className="border-warning/30 bg-warning-soft flex gap-3 rounded-lg border px-4 py-3 text-[13px]">
           <ShieldAlert className="text-warning mt-0.5 size-4 shrink-0" />
@@ -92,7 +92,7 @@ export function SecretsDialog({
                 />
               )}
               <div className="grid gap-1.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-[13px] font-medium">As environment variables (instead of the admin page)</span>
                   <CopyButton value={envText} />
                 </div>

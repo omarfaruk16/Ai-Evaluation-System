@@ -1,5 +1,5 @@
 import { Info, RotateCcw } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { CopyButton, Segmented, Switch } from '@/components/ui/controls';
@@ -79,6 +79,7 @@ function Calculator({
 }) {
   const initial = { ...START, profileId: unit.markingProfile.id ?? profiles[0]?.id ?? '', currency: defaultCurrency };
   const [s, setS] = useState(initial);
+  const estimateRef = useRef<HTMLDivElement>(null);
   const set = <K extends keyof typeof START>(k: K, v: (typeof START)[K]) => setS((x) => ({ ...x, [k]: v }));
 
   const plan = plans.find((p) => p.id === s.planId);
@@ -183,7 +184,7 @@ function Calculator({
             <Button variant="outline" onClick={() => setS(initial)}>
               <RotateCcw /> Reset
             </Button>
-            {quote && <CopyButton value={quote} label="Copy quote" className="border-input bg-surface h-9 border px-3 text-sm shadow-card" />}
+            {quote && <CopyButton value={quote} label="Copy quote" className="border-input bg-surface h-9 border px-3 text-sm shadow-card pointer-coarse:h-10" />}
           </>
         }
       />
@@ -310,9 +311,31 @@ function Calculator({
               />
             </CardBody>
           </Card>
+
+          {/* Phones and tablets: the price stays in view while the inputs are edited. */}
+          {r.charges && (
+            <button
+              type="button"
+              onClick={() => estimateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="bg-surface/95 sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left shadow-xl backdrop-blur-md lg:bottom-4 xl:hidden"
+            >
+              <span className="min-w-0">
+                <span className="text-muted block text-[11px]">Client pays per month</span>
+                <span key={r.charges.total} className="tabular animate-fade-in block truncate text-lg font-semibold tracking-tight">
+                  {fmtMoney(r.charges.total, currency)}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="text-muted block text-[11px]">Margin</span>
+                <span className={`tabular block text-sm font-semibold ${r.charges.margin < 0 ? 'text-danger' : 'text-success'}`}>
+                  {r.charges.marginPercent !== null ? `${r.charges.marginPercent}%` : fmtMoney(r.charges.margin, currency)}
+                </span>
+              </span>
+            </button>
+          )}
         </div>
 
-        <div className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+        <div ref={estimateRef} className="scroll-mt-20 space-y-4 xl:sticky xl:top-6 xl:self-start">
           <Card>
             <CardHeader title="Monthly estimate" description={`${fmtInt(r.answers)} answers · ${fmtInt(r.modelMarked)} marked by the model · ${fmtInt(r.drafts)} rubric drafts`} />
             {!r.charges ? (

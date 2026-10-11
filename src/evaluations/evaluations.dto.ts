@@ -62,6 +62,8 @@ export const rubricDraftSchema = z.object({
   maxMarks: z.number().positive().max(1_000),
   markStep: z.number().positive().max(100).default(0.5),
   maxCriteria: z.number().int().min(1).max(12).default(6),
+  /** Your grouping for the cost breakdown, e.g. the course the question belongs to. */
+  groupId: id.optional(),
 });
 
 /** One answer marked straight away (nothing stored), to check a rubric before an exam uses it. */
@@ -72,6 +74,8 @@ export const tryMarkSchema = z.object({
   markStep: z.number().positive().max(100).default(0.5),
   rubric: rubricSchema,
   answer: z.string().max(20_000),
+  /** Your grouping for the cost breakdown, e.g. the course the question belongs to. */
+  groupId: id.optional(),
 });
 
 export const usageQuerySchema = z.object({

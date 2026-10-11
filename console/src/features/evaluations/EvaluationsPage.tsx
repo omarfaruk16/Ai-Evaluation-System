@@ -68,7 +68,7 @@ export default function EvaluationsPage() {
         <div className="w-full sm:w-64">
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Answer, group or evaluation id" prefix={<Search className="size-3.5" />} />
         </div>
-        <Select className="w-44" value={params.get('clientId') ?? ''} onChange={(e) => setFilter('clientId', e.target.value)} aria-label="Project">
+        <Select className="w-[calc(50%-0.25rem)] sm:w-44" value={params.get('clientId') ?? ''} onChange={(e) => setFilter('clientId', e.target.value)} aria-label="Project">
           <option value="">All projects</option>
           {clients.data?.map((c) => (
             <option key={c.id} value={c.id}>
@@ -76,26 +76,26 @@ export default function EvaluationsPage() {
             </option>
           ))}
         </Select>
-        <Select className="w-36" value={params.get('status') ?? ''} onChange={(e) => setFilter('status', e.target.value)} aria-label="Status">
+        <Select className="w-[calc(50%-0.25rem)] sm:w-36" value={params.get('status') ?? ''} onChange={(e) => setFilter('status', e.target.value)} aria-label="Status">
           <option value="">Any status</option>
           <option value="queued">Queued</option>
           <option value="running">Running</option>
           <option value="completed">Completed</option>
           <option value="failed">Failed</option>
         </Select>
-        <Select className="w-40" value={params.get('decision') ?? ''} onChange={(e) => setFilter('decision', e.target.value)} aria-label="Teacher decision">
+        <Select className="w-[calc(50%-0.25rem)] sm:w-40" value={params.get('decision') ?? ''} onChange={(e) => setFilter('decision', e.target.value)} aria-label="Teacher decision">
           <option value="">Any review</option>
           <option value="none">Not reviewed</option>
           <option value="accepted">Accepted</option>
           <option value="adjusted">Adjusted</option>
           <option value="rejected">Rejected</option>
         </Select>
-        <Select className="w-36" value={params.get('lane') ?? ''} onChange={(e) => setFilter('lane', e.target.value)} aria-label="Lane">
+        <Select className="w-[calc(50%-0.25rem)] sm:w-36" value={params.get('lane') ?? ''} onChange={(e) => setFilter('lane', e.target.value)} aria-label="Lane">
           <option value="">Any lane</option>
           <option value="realtime">Realtime</option>
           <option value="deferred">Deferred</option>
         </Select>
-        <Select className="w-44" value={params.get('flag') ?? ''} onChange={(e) => setFilter('flag', e.target.value)} aria-label="Flag">
+        <Select className="w-[calc(50%-0.25rem)] sm:w-44" value={params.get('flag') ?? ''} onChange={(e) => setFilter('flag', e.target.value)} aria-label="Flag">
           <option value="">Any flag</option>
           <option value="blank">Blank</option>
           <option value="off_topic">Off topic</option>
@@ -132,7 +132,7 @@ export default function EvaluationsPage() {
               {q.data.items.map((e) => (
                 <Tr key={e.id} onClick={() => open(e.id)}>
                   <Td className="text-muted text-xs whitespace-nowrap">{fmtRelative(e.createdAt)}</Td>
-                  <Td className="max-w-[340px]">
+                  <Td className="max-w-[340px]" data-title>
                     <p className="truncate text-[13px]">
                       <span className="font-medium">{e.client.name}</span>
                       <span className="text-muted"> · {e.externalId}</span>
@@ -338,7 +338,13 @@ function EvaluationSheet({ id, onClose }: { id: string; onClose: () => void }) {
                       <StatusBadge status={w.status} />
                       <span className="font-mono text-xs">{w.event}</span>
                       <span className="text-muted text-xs">
-                        {w.attempts} attempt{w.attempts === 1 ? '' : 's'} · {w.lastError ?? (w.lastStatusCode ? `HTTP ${w.lastStatusCode}` : '')} · {fmtRelative(w.createdAt)}
+                        {[
+                          `${w.attempts} attempt${w.attempts === 1 ? '' : 's'}`,
+                          w.lastError ?? (w.lastStatusCode ? `HTTP ${w.lastStatusCode}` : null),
+                          fmtRelative(w.createdAt),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     </li>
                   ))}

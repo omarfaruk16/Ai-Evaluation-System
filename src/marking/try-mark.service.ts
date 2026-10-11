@@ -20,6 +20,8 @@ export interface TryMarkInput {
   markStep: number;
   rubric: Rubric;
   answer: string;
+  /** The project's grouping for its cost breakdown (e.g. a course). */
+  groupId?: string;
   /** Console only: mark with this model profile instead of the one assigned to marking. */
   profileId?: string;
 }
@@ -60,6 +62,7 @@ export class TryMarkService {
     const base = {
       clientId: client?.id ?? null,
       origin: client ? ('client' as const) : ('console' as const),
+      groupId: input.groupId,
       kind: 'marking' as const,
       promptVersion: PROMPT_VERSIONS.marking,
     };
