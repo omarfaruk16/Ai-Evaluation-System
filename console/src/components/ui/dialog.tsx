@@ -43,9 +43,9 @@ export function Modal({
           className={cn(
             'bg-surface fixed z-50 flex flex-col border shadow-2xl focus:outline-none',
             // Phone: bottom sheet
-            'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl data-[state=open]:animate-sheet-up data-[state=closed]:animate-sheet-down',
+            'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-3xl data-[state=open]:animate-sheet-up data-[state=closed]:animate-sheet-down',
             // Tablet and up: centred card
-            'sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:rounded-xl',
+            'sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:rounded-2xl',
             'sm:-translate-x-1/2 sm:-translate-y-1/2 sm:data-[state=open]:animate-pop-in sm:data-[state=closed]:animate-pop-out',
             width,
           )}
@@ -66,7 +66,7 @@ export function Modal({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
           {footer && (
-            <div className="bg-surface-2/50 pb-safe flex flex-col-reverse gap-2 border-t px-5 py-3 sm:flex-row sm:flex-wrap sm:justify-end sm:rounded-b-xl [&>*]:w-full sm:[&>*]:w-auto">
+            <div className="bg-surface-2/50 pb-safe flex flex-col-reverse gap-2 border-t px-5 py-3 sm:flex-row sm:flex-wrap sm:justify-end sm:rounded-b-2xl [&>*]:w-full sm:[&>*]:w-auto">
               {footer}
             </div>
           )}

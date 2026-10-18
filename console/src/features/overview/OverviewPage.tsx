@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Activity, Bot, Clock, Coins, Gauge, ListChecks, Receipt, Users } from 'lucide-react';
+import { Activity, Bot, Building2, Clock, Coins, Gauge, ListChecks, Receipt, Users } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, StatusBadge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Segmented } from '@/components/ui/controls';
 import { EmptyState, ErrorState, PageHeader, PageSkeleton, Stat } from '@/components/ui/page';
 import { Table, Td, TdNum, Th, THead, Tr } from '@/components/ui/table';
 import { get } from '@/lib/api';
+import { useMe } from '@/lib/auth';
 import { costCurrencyCode, costCurrencySymbol, fmtCost, fmtInt, fmtMoney, fmtMonth, fmtMs, fmtNum, fmtPct, toCost, usdNote } from '@/lib/format';
 import { CALL_KIND_LABEL, PROVIDER_LABEL, TASK_LABEL, type Overview, type Task } from '@/lib/types';
 import { BarsChart, ChartFrame } from '../shared/charts';
@@ -23,11 +24,16 @@ export default function OverviewPage() {
     refetchInterval: 30_000,
   });
 
+  const me = useMe();
+  const first = me.data?.name.split(/\s+/)[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
   return (
     <>
       <PageHeader
-        title="Overview"
-        description={q.data ? `Last ${q.data.days} days · dates in ${q.data.timeZone}` : 'How the marking service is doing'}
+        title={first ? `${greeting}, ${first}` : 'Overview'}
+        description={q.data ? `Here’s how marking is going · last ${q.data.days} days, dates in ${q.data.timeZone}` : 'How the marking service is doing'}
         actions={<Segmented value={range} onChange={setRange} options={RANGES.map((r) => ({ value: r, label: `${r} days` }))} size="sm" />}
       />
       {q.isPending ? <PageSkeleton /> : q.isError ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : <Body o={q.data} />}
@@ -43,8 +49,8 @@ function Body({ o }: { o: Overview }) {
   const queued = o.inFlight.reduce((s, r) => s + r.count, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 [&>:last-child]:col-span-2 sm:[&>:last-child]:col-span-1">
+    <div className="stagger space-y-6">
+      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>:last-child]:col-span-2 sm:[&>:last-child]:col-span-1">
         <Stat
           label="Answers marked"
           icon={<ListChecks />}
@@ -82,6 +88,7 @@ function Body({ o }: { o: Overview }) {
         <Stat
           label="Teacher agreement"
           icon={<Users />}
+          ring={o.agreement.acceptRate}
           value={fmtPct(o.agreement.acceptRate, 0)}
           tone={o.agreement.acceptRate === null ? undefined : o.agreement.acceptRate >= 0.8 ? 'success' : o.agreement.acceptRate >= 0.6 ? undefined : 'warning'}
           sub={
@@ -127,6 +134,7 @@ function Body({ o }: { o: Overview }) {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader
+            icon={<Bot />}
             title="Models in use"
             description="Which profile serves each task. Change them under Models & providers."
             actions={
@@ -155,6 +163,7 @@ function Body({ o }: { o: Overview }) {
         </Card>
         <Card>
           <CardHeader
+            icon={<Gauge />}
             title="Right now"
             actions={
               <Link to="/system" className="text-primary text-[13px] font-medium hover:underline">
@@ -179,9 +188,9 @@ function Body({ o }: { o: Overview }) {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 2xl:grid-cols-2">
         <Card>
-          <CardHeader title="Cost by task" description={`Project traffic and your own playground tests, in ${costCurrencyCode()}.`} />
+          <CardHeader icon={<Coins />} title="Cost by task" description={`Project traffic and your own playground tests, in ${costCurrencyCode()}.`} />
           {o.byKind.length === 0 ? (
             <EmptyState icon={<Coins />} title="No model calls in this range" />
           ) : (
@@ -217,7 +226,7 @@ function Body({ o }: { o: Overview }) {
           )}
         </Card>
         <Card>
-          <CardHeader title="Models and hosts" description="Every model call in the range, grouped by the model and host that answered." />
+          <CardHeader icon={<Activity />} title="Models and hosts" description="Every model call in the range, grouped by the model and host that answered." />
           {o.byModel.length === 0 ? (
             <EmptyState icon={<Activity />} title="No model calls in this range" />
           ) : (
@@ -252,6 +261,7 @@ function Body({ o }: { o: Overview }) {
 
       <Card>
         <CardHeader
+          icon={<Building2 />}
           title="Projects"
           description={`Answers marked and AI cost per project, last ${o.days} days.`}
           actions={

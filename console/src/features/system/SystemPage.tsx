@@ -33,7 +33,7 @@ export default function SystemPage() {
       ) : q.isError ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
-        <div className="space-y-6">
+        <div className="stagger space-y-6">
           <div className="grid gap-4 lg:grid-cols-3">
             {q.data.queues.map((qs) => (
               <QueueCard key={qs.key} q={qs} />

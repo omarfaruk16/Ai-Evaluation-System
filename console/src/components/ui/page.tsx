@@ -4,13 +4,14 @@ import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { Skeleton } from './controls';
+import { AnimatedValue, ProgressRing } from './motion';
 
 export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-7 sm:gap-4">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-balance sm:text-[22px]">{title}</h1>
-        {description && <p className="text-muted mt-1 max-w-3xl text-[13px] leading-relaxed sm:text-sm">{description}</p>}
+        <h1 className="text-[22px] font-bold tracking-tight text-balance sm:text-[26px]">{title}</h1>
+        {description && <p className="text-muted mt-1.5 max-w-3xl text-[13px] leading-relaxed sm:text-sm">{description}</p>}
       </div>
       {actions && <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
     </div>
@@ -32,7 +33,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
-      <div className="bg-surface-2 text-muted mb-3 flex size-10 items-center justify-center rounded-full [&_svg]:size-5">{icon ?? <Inbox />}</div>
+      <div className="bg-primary-soft text-primary mb-3 flex size-12 items-center justify-center rounded-2xl [&_svg]:size-5">{icon ?? <Inbox />}</div>
       <p className="text-sm font-medium">{title}</p>
       {description && <p className="text-muted mt-1 max-w-sm text-[13px] leading-relaxed">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -42,7 +43,7 @@ export function EmptyState({
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div className="border-danger/30 bg-danger-soft flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-4">
+    <div className="border-danger/30 bg-danger-soft animate-fade-up flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4">
       <div className="flex items-start gap-3">
         <AlertTriangle className="text-danger mt-0.5 size-4 shrink-0" />
         <div>
@@ -65,21 +66,26 @@ export function PageSkeleton() {
       <Skeleton className="h-8 w-56" />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-24 sm:h-28" />
+          <Skeleton key={i} className="h-28 rounded-2xl sm:h-32" />
         ))}
       </div>
-      <Skeleton className="h-72" />
+      <Skeleton className="h-72 rounded-2xl" />
     </div>
   );
 }
 
-/** KPI tile. */
+/**
+ * KPI tile: an icon chip, the label, a value that counts up when it appears, and optionally a
+ * ring (0–1) on the right, for values that are a share of something (agreement, budget used).
+ */
 export function Stat({
   label,
   value,
   sub,
   icon,
   tone,
+  ring,
+  ringLabel,
   className,
 }: {
   label: ReactNode;
@@ -87,25 +93,41 @@ export function Stat({
   sub?: ReactNode;
   icon?: ReactNode;
   tone?: 'success' | 'warning' | 'danger';
+  ring?: number | null;
+  ringLabel?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn('bg-surface min-w-0 rounded-xl border px-4 py-3.5 shadow-card sm:px-5 sm:py-4', className)}>
-      <div className="text-muted flex items-center justify-between gap-2 text-[13px] font-medium">
-        <span>{label}</span>
-        {icon && <span className="[&_svg]:size-4">{icon}</span>}
-      </div>
-      <div
-        className={cn(
-          'tabular mt-1.5 truncate text-xl font-semibold tracking-tight sm:mt-2 sm:text-2xl',
-          tone === 'success' && 'text-success',
-          tone === 'warning' && 'text-warning',
-          tone === 'danger' && 'text-danger',
+    <div
+      className={cn(
+        'bg-surface shadow-card hover:shadow-lift min-w-0 rounded-2xl border border-transparent px-4 py-4 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 sm:px-5 dark:border-border',
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        {icon && (
+          <span className="bg-primary-soft text-primary flex size-9 shrink-0 items-center justify-center rounded-xl [&_svg]:size-[18px]">{icon}</span>
         )}
-      >
-        {value}
+        <span className="text-muted min-w-0 text-[13px] leading-snug font-medium">{label}</span>
       </div>
-      {sub && <div className="text-muted mt-1 text-xs leading-relaxed">{sub}</div>}
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div
+          className={cn(
+            'tabular min-w-0 truncate text-[22px] font-bold tracking-tight sm:text-[26px]',
+            tone === 'success' && 'text-success',
+            tone === 'warning' && 'text-warning',
+            tone === 'danger' && 'text-danger',
+          )}
+        >
+          <AnimatedValue value={value} />
+        </div>
+        {ring !== undefined && (
+          <ProgressRing value={ring} size={44} stroke={5} tone={tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'accent'}>
+            {ringLabel !== undefined && <span className="text-[10px] font-semibold">{ringLabel}</span>}
+          </ProgressRing>
+        )}
+      </div>
+      {sub && <div className="text-muted mt-1.5 text-xs leading-relaxed">{sub}</div>}
     </div>
   );
 }

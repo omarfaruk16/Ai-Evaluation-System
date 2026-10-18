@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 const tones = {
-  neutral: 'bg-surface-2 text-muted border-border',
+  neutral: 'bg-surface-3 text-muted border-transparent',
   primary: 'bg-primary-soft text-primary border-transparent',
   success: 'bg-success-soft text-success border-transparent',
   warning: 'bg-warning-soft text-warning border-transparent',
@@ -16,7 +16,7 @@ export function Badge({ tone = 'neutral', children, className, dot }: { tone?: T
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap [&_svg]:size-3',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap [&_svg]:size-3',
         tones[tone],
         className,
       )}
@@ -45,10 +45,12 @@ const STATUS_TONE: Record<string, Tone> = {
   disabled: 'neutral',
 };
 
+const sentence = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
   return (
     <Badge tone={STATUS_TONE[status] ?? 'neutral'} dot>
-      {label ?? status.replace(/_/g, ' ')}
+      {sentence(label ?? status.replace(/_/g, ' '))}
     </Badge>
   );
 }

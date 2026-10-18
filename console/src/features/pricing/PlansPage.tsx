@@ -52,7 +52,7 @@ export default function PlansPage() {
           />
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {q.data.map((p) => (
             <PlanCard key={p.id} plan={p} onEdit={() => setEditing(p)} />
           ))}

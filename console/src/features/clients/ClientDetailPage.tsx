@@ -75,7 +75,7 @@ export default function ClientDetailPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div>
         <Link to="/projects" className="text-muted hover:text-foreground mb-3 inline-flex items-center gap-1.5 text-[13px]">
           <ArrowLeft className="size-3.5" /> Projects

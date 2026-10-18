@@ -1,65 +1,72 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/plus-jakarta-sans';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Operator console design tokens. Neutral zinc surfaces, one indigo accent for actions and
- * focus, and muted semantic colours reserved for status. Charts use the --chart-* series.
+ * Operator console design tokens: soft UI on a sage-mint canvas. White rounded cards with soft
+ * shadows, one deep-teal accent for actions and focus (AA on white and on its tint), a brighter
+ * mint for decorative fills (rings, bars), and muted semantic colours reserved for status.
+ * Charts use the --chart-* series, validated for colour-blind separation in both modes.
  */
 :root {
-  --background: #f6f6f7;
+  --background: #eef3f1;
   --surface: #ffffff;
-  --surface-2: #f4f4f5;
-  --surface-3: #ececee;
-  --border: #e4e4e7;
-  --input: #d4d4d8;
-  --foreground: #18181b;
-  --muted: #71717a;
-  --subtle: #a1a1aa;
+  --surface-2: #f4f7f6;
+  --surface-3: #e7eeeb;
+  --border: #e1e9e6;
+  --input: #cdd8d4;
+  --foreground: #0f1f1b;
+  --muted: #5b6b66;
+  --subtle: #7d8d88;
 
-  --primary: #4338ca;
-  --primary-hover: #3730a3;
+  --primary: #0b7a63;
+  --primary-hover: #096652;
   --primary-foreground: #ffffff;
-  --primary-soft: #eef0ff;
+  --primary-soft: #e1f3ec;
+  --accent: #19b38f;
+  --accent-soft: #c9eee1;
 
   --success: #15803d;
   --success-soft: #ecfdf3;
   --warning: #b45309;
   --warning-soft: #fff7e6;
-  --danger: #dc2626;
+  --danger: #c81e1e;
   --danger-soft: #fef2f2;
   --info: #0369a1;
   --info-soft: #eff8ff;
 
-  /* Categorical series, fixed order (validated: CVD ΔE ≥ 8.4, normal-vision ΔE ≥ 19.8). */
-  --chart-1: #2a78d6;
+  /* Categorical series, fixed order (validated: CVD ΔE ≥ 9.5, normal-vision ΔE ≥ 27). */
+  --chart-1: #119b7d;
   --chart-2: #eb6834;
-  --chart-3: #1baf7a;
+  --chart-3: #2a78d6;
   --chart-4: #eda100;
-  --chart-grid: #ececee;
-  --chart-axis: #a1a1aa;
+  --chart-grid: #e7eeeb;
+  --chart-axis: #8a9a95;
 
-  --ring: #6366f1;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.05);
+  --ring: #19b38f;
+  --shadow: 0 1px 2px rgb(16 40 34 / 0.04), 0 6px 20px -8px rgb(16 40 34 / 0.1);
+  --shadow-lg: 0 18px 40px -16px rgb(16 40 34 / 0.28);
   color-scheme: light;
 }
 
 .dark {
-  --background: #0b0b0e;
-  --surface: #131317;
-  --surface-2: #1a1a1f;
-  --surface-3: #23232a;
-  --border: #26262d;
-  --input: #34343c;
-  --foreground: #ececf1;
-  --muted: #9b9ba7;
-  --subtle: #6b6b76;
+  --background: #0a1210;
+  --surface: #121c19;
+  --surface-2: #17231f;
+  --surface-3: #1e2c28;
+  --border: #22322d;
+  --input: #2f413b;
+  --foreground: #e4efeb;
+  --muted: #94a8a2;
+  --subtle: #6c7f79;
 
-  --primary: #818cf8;
-  --primary-hover: #a5b4fc;
-  --primary-foreground: #0b0b0e;
-  --primary-soft: rgb(129 140 248 / 0.12);
+  --primary: #3dd6ae;
+  --primary-hover: #6ee3c4;
+  --primary-foreground: #06231c;
+  --primary-soft: rgb(61 214 174 / 0.12);
+  --accent: #2bbf98;
+  --accent-soft: rgb(43 191 152 / 0.18);
 
   --success: #4ade80;
   --success-soft: rgb(74 222 128 / 0.1);
@@ -70,20 +77,21 @@
   --info: #38bdf8;
   --info-soft: rgb(56 189 248 / 0.1);
 
-  --chart-1: #3987e5;
+  --chart-1: #1aa583;
   --chart-2: #d95926;
-  --chart-3: #199e70;
+  --chart-3: #3987e5;
   --chart-4: #c98500;
-  --chart-grid: #23232a;
-  --chart-axis: #6b6b76;
+  --chart-grid: #1e2c28;
+  --chart-axis: #6c7f79;
 
-  --ring: #818cf8;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --ring: #3dd6ae;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.03);
+  --shadow-lg: 0 18px 40px -16px rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --color-background: var(--background);
@@ -99,6 +107,8 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
@@ -109,6 +119,7 @@
   --color-info-soft: var(--info-soft);
   --color-ring: var(--ring);
   --shadow-card: var(--shadow);
+  --shadow-lift: var(--shadow-lg);
 
   /* Motion: short, eased, and only where it explains a change (open, enter, move). */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
@@ -123,11 +134,20 @@
   --animate-slide-in-left: slide-in-left 280ms var(--ease-out-soft) both;
   --animate-slide-out-left: slide-out-left 200ms ease-in both;
   --animate-slide-out-right: slide-out-right 200ms ease-in both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
@@ -161,8 +181,8 @@
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
-    font-feature-settings: 'cv11', 'ss01';
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   :focus-visible {
     outline: 2px solid var(--ring);

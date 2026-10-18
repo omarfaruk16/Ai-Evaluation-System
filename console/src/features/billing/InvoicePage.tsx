@@ -49,7 +49,7 @@ export default function InvoicePage() {
   const fxCost = inv.costUsd * (inv.fxUsdRate ?? 1);
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div className="no-print flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link to="/billing/invoices" className="text-muted hover:text-foreground mb-3 inline-flex items-center gap-1.5 text-[13px]">

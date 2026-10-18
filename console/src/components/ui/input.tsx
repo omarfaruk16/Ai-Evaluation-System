@@ -3,19 +3,19 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAt
 import { cn } from '@/lib/utils';
 
 const field =
-  'w-full rounded-md border border-input bg-surface px-3 text-base sm:text-sm text-foreground shadow-card placeholder:text-subtle transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger';
+  'w-full rounded-xl border border-border bg-surface px-3.5 text-base sm:text-sm text-foreground placeholder:text-subtle transition-[border-color,box-shadow] duration-150 hover:border-input focus-visible:border-accent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger';
 
 export const Input = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & { prefix?: ReactNode; suffix?: ReactNode }>(
   function Input({ className, prefix, suffix, ...rest }, ref) {
     // Phones show a number pad with a decimal point for number fields.
     if (rest.type === 'number' && rest.inputMode === undefined) rest = { ...rest, inputMode: 'decimal' };
-    if (!prefix && !suffix) return <input ref={ref} className={cn(field, 'h-10 sm:h-9', className)} {...rest} />;
+    if (!prefix && !suffix) return <input ref={ref} className={cn(field, 'h-11 sm:h-10', className)} {...rest} />;
     return (
       <div className={cn('relative flex items-center', className)}>
-        {prefix && <span className="text-muted pointer-events-none absolute left-3 text-sm">{prefix}</span>}
+        {prefix && <span className="text-muted pointer-events-none absolute left-3.5 text-sm">{prefix}</span>}
         <input
           ref={ref}
-          className={cn(field, 'h-10 sm:h-9', prefix ? 'pl-8' : '', suffix ? 'pr-14' : '')}
+          className={cn(field, 'h-11 sm:h-10', prefix ? 'pl-9' : '', suffix ? 'pr-14' : '')}
           {...rest}
         />
         {suffix && <span className="text-muted pointer-events-none absolute right-3 text-xs">{suffix}</span>}
@@ -37,17 +37,17 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 ) {
   return (
     <div className={cn('relative', className)}>
-      <select ref={ref} className={cn(field, 'h-10 appearance-none pr-8 sm:h-9')} {...rest}>
+      <select ref={ref} className={cn(field, 'h-11 cursor-pointer appearance-none pr-9 sm:h-10')} {...rest}>
         {children}
       </select>
-      <ChevronDown className="text-muted pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2" />
+      <ChevronDown className="text-muted pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2" />
     </div>
   );
 });
 
 export function Label({ htmlFor, children, className }: { htmlFor?: string; children: ReactNode; className?: string }) {
   return (
-    <label htmlFor={htmlFor} className={cn('text-[13px] font-medium text-foreground', className)}>
+    <label htmlFor={htmlFor} className={cn('text-[13px] font-semibold text-foreground', className)}>
       {children}
     </label>
   );

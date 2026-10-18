@@ -8,6 +8,9 @@ export const SERIES = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'va
 
 const axis = { stroke: 'var(--chart-axis)', fontSize: 11, tickLine: false, axisLine: false } as const;
 
+/** Marks grow in on first render, unless the viewer asked for less motion. */
+const animate = () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 export interface SeriesDef<T> {
   key: keyof T & string;
   label: string;
@@ -23,8 +26,8 @@ function ChartTooltip<T>({
 }: TooltipProps<number, string> & { series: SeriesDef<T>[]; labelFormat?: (l: string) => string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-surface min-w-[150px] rounded-lg border px-3 py-2 text-xs shadow-xl">
-      <p className="mb-1.5 font-medium">{labelFormat ? labelFormat(String(label)) : label}</p>
+    <div className="bg-surface min-w-[160px] rounded-xl border px-3.5 py-2.5 text-xs shadow-xl">
+      <p className="mb-1.5 font-semibold">{labelFormat ? labelFormat(String(label)) : label}</p>
       {payload.map((p, i) => {
         const def = series.find((s) => s.key === p.dataKey);
         return (
@@ -47,7 +50,7 @@ export function Legend<T>({ series }: { series: SeriesDef<T>[] }) {
     <div className="text-muted flex flex-wrap gap-4 text-xs">
       {series.map((s, i) => (
         <span key={s.key} className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm" style={{ background: SERIES[i] }} />
+          <span className="size-2.5 rounded-full" style={{ background: SERIES[i] }} />
           {s.label}
         </span>
       ))}
@@ -85,11 +88,20 @@ export function BarsChart<T extends object>({
           <XAxis dataKey={x} {...axis} tickFormatter={xFormat} minTickGap={16} />
           <YAxis {...axis} width={60} tickFormatter={yFormat} allowDecimals={!integer} />
           <Tooltip
-            cursor={{ fill: 'var(--surface-2)' }}
+            cursor={{ fill: 'var(--primary-soft)', radius: 8 } as object}
             content={<ChartTooltip series={series} labelFormat={labelFormat ?? xFormat} />}
           />
           {series.map((s, i) => (
-            <Bar key={s.key} dataKey={s.key} fill={SERIES[i]} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+            <Bar
+              key={s.key}
+              dataKey={s.key}
+              fill={SERIES[i]}
+              radius={[6, 6, 2, 2]}
+              maxBarSize={26}
+              isAnimationActive={animate()}
+              animationDuration={700}
+              animationEasing="ease-out"
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -135,8 +147,10 @@ export function LinesChart<T extends object>({
               stroke={SERIES[i]}
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--surface)' }}
-              isAnimationActive={false}
+              activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--surface)' }}
+              isAnimationActive={animate()}
+              animationDuration={800}
+              animationEasing="ease-out"
             />
           ))}
         </LineChart>
@@ -148,9 +162,9 @@ export function LinesChart<T extends object>({
 export function ChartFrame({ title, value, children }: { title: ReactNode; value?: ReactNode; children: ReactNode }) {
   return (
     <div>
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <p className="text-[13px] font-medium">{title}</p>
-        {value && <p className="tabular text-muted text-xs">{value}</p>}
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <p className="text-[15px] font-semibold tracking-tight">{title}</p>
+        {value && <p className="tabular bg-primary-soft text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold">{value}</p>}
       </div>
       {children}
     </div>

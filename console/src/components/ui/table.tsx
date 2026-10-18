@@ -38,19 +38,19 @@ export function Table({ className, stack = true, ...rest }: HTMLAttributes<HTMLT
 }
 
 export function THead({ className, ...rest }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn('bg-surface-2/60 text-muted text-xs', className)} {...rest} />;
+  return <thead className={cn('bg-surface-2 text-muted text-xs', className)} {...rest} />;
 }
 
 export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn('h-9 border-b px-4 font-medium whitespace-nowrap first:pl-5 last:pr-5', className)} {...rest} />;
+  return <th className={cn('h-10 px-4 font-semibold whitespace-nowrap first:pl-5 last:pr-5', className)} {...rest} />;
 }
 
 export function Tr({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
       className={cn(
-        'border-b transition-colors last:border-0',
-        rest.onClick && 'hover:bg-surface-2/60 active:bg-surface-2 cursor-pointer',
+        'border-border/70 border-b transition-colors duration-150 last:border-0 hover:bg-primary-soft/40',
+        rest.onClick && 'active:bg-primary-soft cursor-pointer',
         className,
       )}
       {...rest}
@@ -59,7 +59,7 @@ export function Tr({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) 
 }
 
 export function Td({ className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-4 py-2.5 align-middle first:pl-5 last:pr-5', className)} {...rest} />;
+  return <td className={cn('px-4 py-3 align-middle first:pl-5 last:pr-5', className)} {...rest} />;
 }
 
 /** Right-aligned tabular number cell. */

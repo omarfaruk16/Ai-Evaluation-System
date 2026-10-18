@@ -42,7 +42,7 @@ export default function ModelsPage() {
       ) : q.isError ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
-        <div className="space-y-6">
+        <div className="stagger space-y-6">
           <div className="grid gap-4 lg:grid-cols-3">
             <Assignments data={q.data} />
             <Card>

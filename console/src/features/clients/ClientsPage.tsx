@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Building2, Plus } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,13 @@ export default function ClientsPage() {
   const navigate = useNavigate();
   const q = useQuery({ queryKey: ['clients'], queryFn: ({ signal }) => get<Client[]>('/clients', signal) });
   const [creating, setCreating] = useState(false);
+  // "New project" from the sidebar card or the search palette lands here with ?new=1.
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (params.get('new') !== '1') return;
+    setCreating(true);
+    setParams({}, { replace: true });
+  }, [params, setParams]);
   const [created, setCreated] = useState<CreatedClient | null>(null);
 
   return (

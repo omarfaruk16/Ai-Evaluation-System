@@ -11,7 +11,7 @@ export function Menu({ trigger, children, align = 'end' }: { trigger: ReactNode;
           align={align}
           sideOffset={6}
           collisionPadding={8}
-          className="bg-surface z-50 min-w-[180px] origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-lg border p-1 text-sm shadow-xl focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
+          className="bg-surface z-50 min-w-[200px] origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-xl border p-1.5 text-sm shadow-xl focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
         >
           {children}
         </M.Content>
@@ -26,7 +26,7 @@ export function MenuItem({ children, onSelect, danger, disabled }: { children: R
       disabled={disabled}
       onSelect={onSelect}
       className={cn(
-        'data-[highlighted]:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 outline-none pointer-coarse:py-2.5 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-4',
+        'data-[highlighted]:bg-primary-soft data-[highlighted]:text-primary flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 outline-none pointer-coarse:py-2.5 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-4',
         danger && 'text-danger',
       )}
     >

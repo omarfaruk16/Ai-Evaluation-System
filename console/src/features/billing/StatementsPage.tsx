@@ -61,7 +61,7 @@ export default function StatementsPage() {
       ) : q.isError ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
-        <div className="space-y-6">
+        <div className="stagger space-y-6">
           <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             {Object.keys(q.data.totals).length === 0 ? (
               <Stat label="Billed" value="—" sub="No project has a pricing plan" />
