@@ -6,6 +6,7 @@ import { CoreModule } from './core.module';
 import { EvaluationsController } from './evaluations/evaluations.controller';
 import { EvaluationsService } from './evaluations/evaluations.service';
 import { HealthController } from './health/health.controller';
+import { EmailAlertService } from './leads/email';
 import { LeadsController, LeadsService } from './leads/leads';
 import { ProjectController } from './project/project.controller';
 import { RubricsController } from './rubrics/rubrics.controller';
@@ -31,7 +32,7 @@ export class AppModule {
         HealthController,
         LeadsController,
       ],
-      providers: [EvaluationsService, ProjectBillingService, LeadsService, ApiKeyGuard],
+      providers: [EvaluationsService, ProjectBillingService, LeadsService, EmailAlertService, ApiKeyGuard],
     };
   }
 }

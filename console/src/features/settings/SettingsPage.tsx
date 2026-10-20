@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Plus, Trash2, UserPlus } from 'lucide-react';
+import { LogOut, Mail, Plus, Send, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -7,7 +7,7 @@ import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { useConfirm } from '@/components/ui/confirm';
-import { Segmented } from '@/components/ui/controls';
+import { Segmented, Switch } from '@/components/ui/controls';
 import { Modal } from '@/components/ui/dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { ErrorState, PageHeader, PageSkeleton } from '@/components/ui/page';
@@ -18,7 +18,7 @@ import { fmtDate, fmtRelative } from '@/lib/format';
 import type { Admin, BillingSettings, Session } from '@/lib/types';
 import { useBillingSettings } from '../shared/queries';
 
-type Tab = 'business' | 'currency' | 'admins' | 'account';
+type Tab = 'business' | 'currency' | 'email' | 'admins' | 'account';
 
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
@@ -33,12 +33,14 @@ export default function SettingsPage() {
         options={[
           { value: 'business', label: 'Business & invoices' },
           { value: 'currency', label: 'Currencies & time zone' },
+          { value: 'email', label: 'Email alerts' },
           { value: 'admins', label: 'Admins' },
           { value: 'account', label: 'My account' },
         ]}
       />
       {tab === 'business' && <BillingForm section="business" />}
       {tab === 'currency' && <BillingForm section="currency" />}
+      {tab === 'email' && <EmailAlerts />}
       {tab === 'admins' && <Admins />}
       {tab === 'account' && <Account />}
     </>
@@ -391,4 +393,98 @@ function describeAgent(ua: string | null): string {
             ? 'Linux'
             : '';
   return [browser, os].filter(Boolean).join(' on ');
+}
+
+interface EmailSettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  user: string;
+  from: string;
+  to: string;
+  passwordSet: boolean;
+  canStorePassword: boolean;
+}
+
+function EmailAlerts() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['email-settings'], queryFn: ({ signal }) => get<EmailSettings>('/email-settings', signal) });
+  const [f, setF] = useState<EmailSettings | null>(null);
+  const [password, setPassword] = useState('');
+  useEffect(() => {
+    if (q.data) setF(q.data);
+  }, [q.data]);
+
+  const save = useMutation({
+    mutationFn: () => put<EmailSettings>('/email-settings', { enabled: f!.enabled, host: f!.host, port: Number(f!.port), user: f!.user, from: f!.from, to: f!.to, ...(password ? { password } : {}) }),
+    onSuccess: (s) => {
+      qc.setQueryData(['email-settings'], s);
+      setPassword('');
+      toast.success('Email settings saved');
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+  const test = useMutation({
+    mutationFn: () => post('/email-settings/test'),
+    onSuccess: () => toast.success(`Test email sent to ${f?.to}. Check the inbox (and spam).`),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
+  if (q.isPending || !f) return <PageSkeleton />;
+  if (q.isError) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
+  const set = <K extends keyof EmailSettings>(k: K, v: EmailSettings[K]) => setF({ ...f, [k]: v });
+  const dirty = JSON.stringify({ ...f, passwordSet: 0 }) !== JSON.stringify({ ...q.data, passwordSet: 0 }) || password !== '';
+
+  return (
+    <Card className="max-w-3xl">
+      <CardHeader
+        title="Email me when a request arrives"
+        description="Pilot, demo, partner and contact requests from scholametrix.tech are always saved under Leads. Switch this on to also get an email for each one."
+      />
+      <CardBody className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Switch checked={f.enabled} onChange={(v) => set('enabled', v)} label="Send an email for every new request" />
+        </div>
+        <Field label="Send alerts to" htmlFor="e-to" className="sm:col-span-2" hint="One or more addresses, separated by commas.">
+          <Input id="e-to" type="email" multiple value={f.to} onChange={(e) => set('to', e.target.value)} placeholder="you@example.com" />
+        </Field>
+        <Field label="Mail server" htmlFor="e-host" hint="Gmail: smtp.gmail.com, port 587.">
+          <Input id="e-host" value={f.host} onChange={(e) => set('host', e.target.value)} />
+        </Field>
+        <Field label="Port" htmlFor="e-port" hint="587 (recommended) or 465.">
+          <Input id="e-port" type="number" value={f.port} onChange={(e) => set('port', Number(e.target.value))} />
+        </Field>
+        <Field label="Sending account" htmlFor="e-user" hint="The mailbox the alerts are sent from, e.g. your Gmail address.">
+          <Input id="e-user" type="email" autoComplete="off" value={f.user} onChange={(e) => set('user', e.target.value)} />
+        </Field>
+        <Field
+          label="App password"
+          htmlFor="e-pass"
+          hint={
+            f.canStorePassword
+              ? f.passwordSet
+                ? 'A password is saved (encrypted). Leave empty to keep it.'
+                : 'Gmail: Google Account → Security → 2-Step Verification → App passwords. Not your normal password.'
+              : 'This server has no SECRETS_ENCRYPTION_KEY, so a password can’t be stored safely.'
+          }
+        >
+          <Input id="e-pass" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={f.passwordSet ? '••••••••••••••••' : ''} disabled={!f.canStorePassword} />
+        </Field>
+        <Field label="Show as sender (optional)" htmlFor="e-from" className="sm:col-span-2" hint="Leave empty to use the sending account. Example: Scholametrix <you@gmail.com>">
+          <Input id="e-from" value={f.from} onChange={(e) => set('from', e.target.value)} />
+        </Field>
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2">
+          <Button variant="outline" onClick={() => test.mutate()} loading={test.isPending} disabled={dirty || !q.data?.passwordSet}>
+            <Send /> Send a test email
+          </Button>
+          <div className="flex items-center gap-3">
+            {dirty && <span className="text-muted text-xs">Unsaved changes. Save, then send the test.</span>}
+            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty}>
+              <Mail /> Save
+            </Button>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
 }

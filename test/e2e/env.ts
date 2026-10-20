@@ -18,4 +18,7 @@ Object.assign(process.env, {
   ROUTER_SMALL_GROUP_MAX: '3',
   ROUTER_FIRST_N_REALTIME: '1',
   WEBHOOK_MAX_ATTEMPTS: '3',
+  // Lets the alert-email test store a mail password, and accept its throwaway self-signed TLS certificate.
+  SECRETS_ENCRYPTION_KEY: 'e2e-test-secrets-key-0123456789abcdef',
+  NODE_TLS_REJECT_UNAUTHORIZED: '0',
 });

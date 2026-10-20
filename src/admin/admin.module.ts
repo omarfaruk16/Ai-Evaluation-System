@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CoreModule } from '../core.module';
+import { EmailAlertService, EmailSettingsController } from '../leads/email';
 import { LeadsAdminController } from '../leads/leads';
 import { EvaluationsService } from '../evaluations/evaluations.service';
 import { AdminAuthController, AdminsController } from './auth/admin-auth.controller';
@@ -29,6 +30,7 @@ import { PlaygroundController, PlaygroundService } from './playground.admin';
     PlaygroundController,
     SystemController,
     LeadsAdminController,
+    EmailSettingsController,
   ],
   providers: [
     AdminAuthService,
@@ -39,6 +41,7 @@ import { PlaygroundController, PlaygroundService } from './playground.admin';
     OverviewService,
     PlaygroundService,
     EvaluationsService,
+    EmailAlertService,
   ],
 })
 export class AdminModule {}

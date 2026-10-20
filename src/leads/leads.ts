@@ -7,6 +7,7 @@ import { paged, pageQuery, sendCsv, UuidPipe } from '../admin/http';
 import { AppError, notFound } from '../common/errors';
 import { PrismaService } from '../common/prisma.service';
 import { parseOrThrow } from '../common/validation';
+import { EmailAlertService } from './email';
 
 const KINDS = ['pilot', 'demo', 'partner', 'contact'] as const;
 const STATUSES = ['new', 'contacted', 'qualified', 'won', 'closed', 'spam'] as const;
@@ -93,7 +94,10 @@ export function leadsCors(allowed: string[]) {
 
 @Injectable()
 export class LeadsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(EmailAlertService) private readonly email: EmailAlertService,
+  ) {}
 
   async create(body: unknown, req: Request): Promise<{ ok: true }> {
     const dto = parseOrThrow(leadSchema, body);
@@ -105,7 +109,7 @@ export class LeadsService {
       throw new AppError('rate_limited', 'Too many requests. Please try again in a few minutes, or email us.', HttpStatus.TOO_MANY_REQUESTS);
     }
     const { company: _hp, website, ...rest } = dto;
-    await this.prisma.lead.create({
+    const lead = await this.prisma.lead.create({
       data: {
         ...rest,
         email: rest.email.toLowerCase(),
@@ -114,6 +118,7 @@ export class LeadsService {
         userAgent: String(req.headers['user-agent'] ?? '').slice(0, 300) || null,
       },
     });
+    void this.email.notifyLead(lead);
     return { ok: true };
   }
 }

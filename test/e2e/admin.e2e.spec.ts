@@ -1,6 +1,8 @@
 import { TEST_DATABASE_URL, TEST_REDIS_URL } from './env';
 import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { simpleParser, type AddressObject, type ParsedMail } from 'mailparser';
+import { SMTPServer } from 'smtp-server';
 import { execSync } from 'node:child_process';
 import Redis from 'ioredis';
 import request from 'supertest';
@@ -351,5 +353,127 @@ describe('website leads', () => {
     expect(csv.text).toContain("\"'=called, demo Monday\"");
 
     expect((await agent.delete(`/admin-api/leads/${lead.id}`).set(CSRF)).status).toBe(204);
+  });
+});
+
+describe('lead email alerts settings', () => {
+  const base = { enabled: false, host: 'smtp.gmail.com', port: 587, user: 'alerts@example.com', from: '', to: 'founder@example.com' };
+
+  it('needs a console session', async () => {
+    expect((await request(http).get('/admin-api/email-settings')).status).toBe(401);
+  });
+
+  it('starts switched off with Gmail defaults', async () => {
+    agent = request.agent(http);
+    await agent.post('/admin-api/auth/login').set(CSRF).send({ email: EMAIL, password: PASSWORD });
+    const res = await agent.get('/admin-api/email-settings');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ enabled: false, host: 'smtp.gmail.com', port: 587, passwordSet: false });
+  });
+
+  it('refuses to switch on without a password, and rejects bad addresses', async () => {
+    const on = await agent.put('/admin-api/email-settings').set(CSRF).send({ ...base, enabled: true });
+    expect(on.status).toBe(400);
+    const bad = await agent.put('/admin-api/email-settings').set(CSRF).send({ ...base, to: 'not-an-email' });
+    expect(bad.status).toBe(400);
+  });
+
+  it('never returns the password and says whether one is saved', async () => {
+    const saved = await agent.put('/admin-api/email-settings').set(CSRF).send({ ...base, password: 'abcd efgh ijkl mnop' });
+    // Without SECRETS_ENCRYPTION_KEY the password can't be stored; with it, it is stored sealed.
+    if (saved.status === 409) return;
+    expect(saved.status).toBe(200);
+    expect(JSON.stringify(saved.body)).not.toContain('abcd');
+    expect(saved.body.passwordSet).toBe(true);
+    const stored = await prisma.appSetting.findUnique({ where: { key: 'email.alerts' } });
+    expect(JSON.stringify(stored?.value)).not.toContain('abcd');
+  });
+
+  it('refuses a test send before the settings are complete', async () => {
+    await prisma.appSetting.deleteMany({ where: { key: 'email.alerts' } });
+    const res = await agent.post('/admin-api/email-settings/test').set(CSRF).send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('lead email alerts, end to end', () => {
+  const inbox: ParsedMail[] = [];
+  let smtp: SMTPServer;
+  let port = 0;
+
+  beforeAll(async () => {
+    smtp = new SMTPServer({
+      authOptional: false,
+      onAuth: (auth, _s, cb) => (auth.username === 'alerts@example.com' && auth.password === 'app-password-1' ? cb(null, { user: 'ok' }) : cb(new Error('bad login'))),
+      onData: (stream, _s, cb) => {
+        void simpleParser(stream).then((m) => {
+          inbox.push(m);
+          cb();
+        });
+      },
+    });
+    await new Promise<void>((r) => smtp.listen(0, '127.0.0.1', r));
+    port = (smtp.server.address() as { port: number }).port;
+    agent = request.agent(http);
+    await agent.post('/admin-api/auth/login').set(CSRF).send({ email: EMAIL, password: PASSWORD });
+  });
+  afterAll(async () => {
+    await new Promise((r) => smtp.close(r as () => void));
+  });
+
+  const settings = (over: object = {}) => ({ enabled: true, host: '127.0.0.1', port, user: 'alerts@example.com', from: 'Scholametrix <alerts@example.com>', to: 'founder@example.com', password: 'app-password-1', ...over });
+  const lead = { kind: 'demo', name: 'Nadia Karim', email: 'nadia@example.edu', institution: 'Test College', message: 'Please show us a demo next week.\nThank you <3', sourcePage: '/contact' };
+
+  it('stores the password sealed, sends a test email, and a real request sends an alert', async () => {
+    const saved = await agent.put('/admin-api/email-settings').set(CSRF).send(settings());
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ enabled: true, passwordSet: true });
+    expect(JSON.stringify(saved.body)).not.toContain('app-password-1');
+    const row = await prisma.appSetting.findUnique({ where: { key: 'email.alerts' } });
+    expect(JSON.stringify(row?.value)).not.toContain('app-password-1');
+
+    expect((await agent.post('/admin-api/email-settings/test').set(CSRF).send({})).status).toBe(201);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]!.subject).toContain('[Test]');
+    expect((inbox[0]!.to as AddressObject).text).toBe('founder@example.com');
+
+    resetLeadLimits();
+    expect((await request(http).post('/v1/leads').send(lead)).status).toBe(201);
+    await waitFor(async () => inbox.length, (n) => n === 2, 8_000);
+    const m = inbox[1]!;
+    expect(m.subject).toBe('New demo request: Nadia Karim (Test College)');
+    expect(m.replyTo?.text).toBe('nadia@example.edu');
+    expect(m.text).toContain('Please show us a demo next week.');
+    expect(m.html).toContain('Thank you &lt;3');
+  });
+
+  it('keeps the saved password when the form leaves it empty', async () => {
+    const res = await agent.put('/admin-api/email-settings').set(CSRF).send(settings({ password: undefined, to: 'a@example.com, b@example.com' }));
+    expect(res.status).toBe(200);
+    expect(res.body.passwordSet).toBe(true);
+    resetLeadLimits();
+    await request(http).post('/v1/leads').send(lead);
+    await waitFor(async () => inbox.length, (n) => n === 3, 8_000);
+    expect((inbox[2]!.to as AddressObject).text).toBe('a@example.com, b@example.com');
+  });
+
+  it('still saves the request when the mail server rejects the login', async () => {
+    await agent.put('/admin-api/email-settings').set(CSRF).send(settings({ password: 'wrong-password' }));
+    resetLeadLimits();
+    const before = await prisma.lead.count();
+    expect((await request(http).post('/v1/leads').send(lead)).status).toBe(201);
+    expect(await prisma.lead.count()).toBe(before + 1);
+    const test = await agent.post('/admin-api/email-settings/test').set(CSRF).send({});
+    expect(test.status).toBe(400);
+    expect(test.body.error.message).toContain('mail server refused');
+  });
+
+  it('sends nothing when alerts are switched off', async () => {
+    await agent.put('/admin-api/email-settings').set(CSRF).send(settings({ enabled: false, password: 'app-password-1' }));
+    const n = inbox.length;
+    resetLeadLimits();
+    await request(http).post('/v1/leads').send(lead);
+    await new Promise((r) => setTimeout(r, 600));
+    expect(inbox.length).toBe(n);
   });
 });
