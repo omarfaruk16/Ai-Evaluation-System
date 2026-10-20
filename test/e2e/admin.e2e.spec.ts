@@ -7,6 +7,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generatePassword, hashPassword } from '../../src/admin/auth/password';
 import { createApp } from '../../src/app.factory';
+import { resetLeadLimits } from '../../src/leads/leads';
 
 // The operator console API (/admin-api): sign-in and CSRF guard, model profiles, client keys,
 // pricing plans, statements and invoices, the playground and queue controls.
@@ -41,7 +42,7 @@ async function waitFor<T>(fn: () => Promise<T>, ok: (v: T) => boolean, ms = 15_0
 beforeAll(async () => {
   execSync('pnpm exec prisma migrate deploy', { env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL }, stdio: 'ignore' });
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "AdminSession", "AdminUser", "Invoice", "PricingPlan", "RubricDraft", "WebhookDelivery", "LlmCall", "Evaluation", "QuestionContext", "Client", "ModelProfile", "AppSetting" CASCADE',
+    'TRUNCATE "AdminSession", "AdminUser", "Invoice", "PricingPlan", "RubricDraft", "WebhookDelivery", "LlmCall", "Evaluation", "QuestionContext", "Client", "ModelProfile", "AppSetting", "Lead" CASCADE',
   );
   const redis = new Redis(TEST_REDIS_URL);
   await redis.flushdb();
@@ -274,5 +275,81 @@ describe('operations', () => {
   it('signs out', async () => {
     expect((await agent.post('/admin-api/auth/logout').set(CSRF)).status).toBe(204);
     expect((await agent.get('/admin-api/auth/me')).status).toBe(401);
+  });
+});
+
+describe('website leads', () => {
+  const pilot = {
+    kind: 'pilot',
+    name: 'Ayesha Rahman',
+    email: 'Ayesha@Example.edu',
+    phone: '+880 1711 000000',
+    institution: 'Example University',
+    website: 'example.edu',
+    message: 'We would like to pilot AI marking for one course this term.',
+    sourcePage: '/pilot',
+  };
+
+  it('accepts a pilot request from the website without an API key', async () => {
+    resetLeadLimits();
+    const res = await request(http).post('/v1/leads').set('Origin', 'https://scholametrix.tech').send(pilot);
+    expect(res.status).toBe(201);
+    expect(res.headers['access-control-allow-origin']).toBe('https://scholametrix.tech');
+  });
+
+  it('answers the CORS preflight only for allowed origins', async () => {
+    const ok = await request(http).options('/v1/leads').set('Origin', 'https://scholametrix.tech');
+    expect(ok.status).toBe(204);
+    expect(ok.headers['access-control-allow-methods']).toContain('POST');
+    const other = await request(http).options('/v1/leads').set('Origin', 'https://evil.example');
+    expect(other.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('requires a phone and institution for pilots and explains each problem', async () => {
+    resetLeadLimits();
+    const res = await request(http).post('/v1/leads').send({ kind: 'pilot', name: 'A B', email: 'not-an-email', message: 'short' });
+    expect(res.status).toBe(400);
+    const paths = res.body.error.details.map((d: { path: string }) => d.path);
+    expect(paths).toEqual(expect.arrayContaining(['email', 'message', 'institution', 'phone']));
+  });
+
+  it('silently drops bots that fill the hidden field', async () => {
+    resetLeadLimits();
+    const before = await prisma.lead.count();
+    const res = await request(http).post('/v1/leads').send({ ...pilot, company: 'spam inc' });
+    expect(res.status).toBe(201);
+    expect(await prisma.lead.count()).toBe(before);
+  });
+
+  it('rate-limits one address', async () => {
+    resetLeadLimits();
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      statuses.push((await request(http).post('/v1/leads').send({ ...pilot, kind: 'contact', email: `x${i}@example.edu` })).status);
+    }
+    expect(statuses.slice(0, 5).every((s) => s === 201)).toBe(true);
+    expect(statuses[5]).toBe(429);
+  });
+
+  it('lists leads in the console, updates status and notes, exports CSV', async () => {
+    expect((await request(http).get('/admin-api/leads')).status).toBe(401);
+    agent = request.agent(http);
+    expect((await agent.post('/admin-api/auth/login').set(CSRF).send({ email: EMAIL, password: PASSWORD })).status).toBe(200);
+    const list = await agent.get('/admin-api/leads?kind=pilot');
+    expect(list.status).toBe(200);
+    const lead = list.body.items[0];
+    expect(lead).toMatchObject({ name: 'Ayesha Rahman', email: 'ayesha@example.edu', website: 'https://example.edu', status: 'new' });
+    expect(list.body.counts.new).toBeGreaterThan(0);
+
+    expect((await agent.patch(`/admin-api/leads/${lead.id}`).send({ status: 'contacted' })).status).toBe(403);
+    const upd = await agent.patch(`/admin-api/leads/${lead.id}`).set(CSRF).send({ status: 'contacted', note: '=called, demo Monday' });
+    expect(upd.body).toMatchObject({ status: 'contacted', note: '=called, demo Monday' });
+    expect(upd.body.contactedAt).not.toBeNull();
+
+    const csv = await agent.get('/admin-api/leads/export.csv');
+    expect(csv.text).toContain('Ayesha Rahman');
+    expect(csv.text).toContain("\"'=called, demo Monday\"");
+
+    expect((await agent.delete(`/admin-api/leads/${lead.id}`).set(CSRF)).status).toBe(204);
   });
 });

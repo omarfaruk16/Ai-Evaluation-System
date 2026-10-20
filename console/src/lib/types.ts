@@ -522,3 +522,30 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   openai_compatible: 'OpenAI-compatible',
   mock: 'Mock',
 };
+
+export type LeadKind = 'pilot' | 'demo' | 'partner' | 'contact';
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'closed' | 'spam';
+
+export interface Lead {
+  id: string;
+  kind: LeadKind;
+  status: LeadStatus;
+  name: string;
+  email: string;
+  phone: string | null;
+  institution: string | null;
+  website: string | null;
+  role: string | null;
+  country: string | null;
+  size: string | null;
+  message: string;
+  sourcePage: string | null;
+  note: string | null;
+  contactedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadList extends Paged<Lead> {
+  counts: Record<LeadStatus, number>;
+}

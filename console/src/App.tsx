@@ -19,6 +19,7 @@ const PlaygroundPage = lazy(() => import('./features/playground/PlaygroundPage')
 const WebhooksPage = lazy(() => import('./features/webhooks/WebhooksPage'));
 const SystemPage = lazy(() => import('./features/system/SystemPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
+const LeadsPage = lazy(() => import('./features/leads/LeadsPage'));
 
 export function App() {
   const me = useMe();
@@ -50,6 +51,7 @@ export function App() {
                 <Route path="projects" element={<ClientsPage />} />
                 <Route path="projects/:id" element={<ClientDetailPage />} />
                 <Route path="clients/*" element={<Navigate to="/projects" replace />} />
+                <Route path="leads" element={<LeadsPage />} />
                 <Route path="models" element={<ModelsPage />} />
                 <Route path="pricing" element={<PlansPage />} />
                 <Route path="pricing/quote" element={<QuotePage />} />

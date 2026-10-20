@@ -55,6 +55,11 @@ export const envSchema = z
     CONSOLE_ENABLED: bool.default('true'),
     // The public base URL clients use for this API (shown in the console's integration details).
     PUBLIC_URL: z.string().url().optional(),
+    /** Websites allowed to post the public lead form from a browser (comma-separated origins). */
+    LEADS_ALLOWED_ORIGINS: z
+      .string()
+      .default('https://scholametrix.tech,https://www.scholametrix.tech,http://localhost:3000')
+      .transform((s) => s.split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)),
     CONSOLE_DIR: z.string().optional(),
     ADMIN_SESSION_HOURS: z.coerce.number().int().positive().max(24 * 30).default(12),
     ADMIN_COOKIE_SECURE: bool.optional(),

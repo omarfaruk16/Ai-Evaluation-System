@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/errors';
+import { leadsCors } from './leads/leads';
 import { ENV } from './config/config.module';
 import type { Env } from './config/env';
 
@@ -34,6 +35,7 @@ export async function createApp(
     }),
   );
   if (env.CONSOLE_ENABLED) serveConsole(app, env.CONSOLE_DIR);
+  app.use('/v1/leads', leadsCors(env.LEADS_ALLOWED_ORIGINS));
   // 500 answers of up to 20k characters fit comfortably.
   app.useBodyParser('json', { limit: '12mb' });
   app.useGlobalFilters(new AllExceptionsFilter());

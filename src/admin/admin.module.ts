@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CoreModule } from '../core.module';
+import { LeadsAdminController } from '../leads/leads';
 import { EvaluationsService } from '../evaluations/evaluations.service';
 import { AdminAuthController, AdminsController } from './auth/admin-auth.controller';
 import { AdminAuthService } from './auth/admin-auth.service';
@@ -27,6 +28,7 @@ import { PlaygroundController, PlaygroundService } from './playground.admin';
     WebhooksAdminController,
     PlaygroundController,
     SystemController,
+    LeadsAdminController,
   ],
   providers: [
     AdminAuthService,

@@ -354,3 +354,48 @@ model Invoice {
 
   @@index([clientId, periodStart])
 }
+
+enum LeadKind {
+  pilot // free pilot request
+  demo // book a demo / contact sales
+  partner // research partner, sponsor or investor
+  contact // general message
+}
+
+enum LeadStatus {
+  new
+  contacted
+  qualified
+  won
+  closed
+  spam
+}
+
+/// A request sent from the public website (scholametrix.tech): pilot, demo, partnership or message.
+model Lead {
+  id          String     @id @default(uuid()) @db.Uuid
+  kind        LeadKind
+  status      LeadStatus @default(new)
+  name        String
+  email       String
+  phone       String?
+  institution String?
+  website     String?
+  role        String?
+  country     String?
+  /// Size band the visitor picked, e.g. "1,000–5,000 students".
+  size        String?
+  message     String
+  /// Website page the form was sent from.
+  sourcePage  String?
+  ip          String?
+  userAgent   String?
+  /// Operator's private notes.
+  note        String?
+  contactedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}

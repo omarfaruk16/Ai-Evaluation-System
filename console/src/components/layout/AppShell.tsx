@@ -11,6 +11,7 @@ import {
   ChevronRight,
   CornerDownLeft,
   FlaskConical,
+  Inbox,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -56,6 +57,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: 'Business',
     items: [
       { to: '/projects', label: 'Projects', icon: <Building2 />, keywords: 'clients customers api keys' },
+      { to: '/leads', label: 'Leads', icon: <Inbox />, keywords: 'website pilot demo contact sponsor requests sales' },
       { to: '/billing', label: 'Statements', icon: <BarChart3 />, end: true, keywords: 'billing month revenue margin' },
       { to: '/billing/invoices', label: 'Invoices', icon: <Receipt />, keywords: 'bills paid due' },
       { to: '/pricing', label: 'Pricing plans', icon: <Tags />, end: true, keywords: 'prices plans' },
